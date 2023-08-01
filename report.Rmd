@@ -35,62 +35,79 @@ library(tmaptools)
 library(rjson)
 library(spatstat)
 library(raster)
-library(INLA)
 library(utils)
 #some "important" "globals" and setup
 #NOTE: much of this code is reused from my EDA/presentation code, with large
 #chunks cut out of it because they weren't necessary to do in this report
 tmap_mode('plot')
-projected_crs = 'EPSG:3035'
+projected_crs = 'EPSG:3857' #switching for now to web mercator
 unprojected_crs = 'EPSG:4326'
-bbox = st_bbox(c(xmin = -16.26,
+
+unproj_bbox = bbox = st_bbox(c(xmin = -16.26,
                  xmax = 42.98,
                  ymin = 27.92,
                  ymax = 61.54),
-                 crs=unprojected_crs)
-cropping_bbox = vect(st_as_sfc(bbox))
+                 crs=unprojected_crs) %>%
+       st_as_sfc()
+
+bbox = unproj_bbox %>%
+       st_transform(projected_crs)
+
+cropping_bbox = vect(bbox)
+up_cbbox = vect(unproj_bbox)
+
 milan_location = st_point(c(45.4643, 9.189), dim='XY') %>%
                  st_sfc() %>%
                  as_Spatial()
-crs(milan_location) = unprojected_crs
+crs(milan_location) = 'EPSG:3857' #NOTE: this is specifically in web mercator proj.
+
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
 ```
 
 ```{r download_and_prep_data, echo=FALSE, include=FALSE}
 basemap = read_osm(bbox, type='apple-iphoto', mergeTiles=TRUE)
+#i think these tiles are already in web mercator
 
 download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw', './combined-maritime-traderoutes.csv')
 maritime_routes_sf = read_sf('./combined-maritime-traderoutes.csv')
 st_crs(maritime_routes_sf) = unprojected_crs
-maritime_routes_sf = st_crop(maritime_routes_sf, bbox)
+maritime_routes_sf = st_transform(maritime_routes_sf, projected_crs) %>%
+                     st_crop(bbox)
 
-download.file('https://a.scrunko.monster/ZIwO3/ViBOtUXO82.tar/raw', './1279_borders.tar')
-untar(tarfile = './1279_borders.tar')
+download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/master/1279.zip', 
+              './1279_borders.zip') #download directly from an archive, as streaming from my server crashes on Win
+                                    #note: make sure to cite this archive in the bibliography!! 
+unzip('./1279_borders.zip')
 borders = read_sf('./cntry1279.shp')
 st_crs(borders) = unprojected_crs
-borders = st_crop(borders, bbox)
+borders = st_transform(borders, projected_crs) %>%
+          st_crop(bbox)
 
 download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw', './popc_1300AD.asc')
 ad1300_popc_rast = rast('./popc_1300AD.asc') %>%
-                  project(unprojected_crs) %>%
-                  #focal(w=3, na.policy="only", fun=mean) %>%
-                  crop(cropping_bbox)
+                   terra::project(unprojected_crs) %>%
+                   crop(up_cbbox) %>%
+                   terra::project(projected_crs) #yes, this seems insane, but otherwise terra downsamples to hell
+                                                 #or crashes if you try to specify the correct resolution
 units(ad1300_popc_rast) = 'ppl/cell'
 
 download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw', './popd_1300AD.asc')
 ad1300_popd_rast = rast('./popd_1300AD.asc') %>%
-                   project(unprojected_crs) %>%
-                   #focal(w=3, na.policy="only", fun=mean) %>% #to fix the NA issue where points are "over water"
-                   crop(cropping_bbox)
+                   terra::project(unprojected_crs) %>%
+                   crop(up_cbbox) %>%
+                   terra::project(projected_crs)
 units(ad1300_popd_rast) = 'ppl/km²'
 
 download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw', './popc_1400AD.asc')
 ad1400_popc_rast = rast('./popc_1400AD.asc') %>%
-                  project(unprojected_crs) %>%
-                  crop(cropping_bbox)
+                   terra::project(unprojected_crs) %>%
+                   crop(up_cbbox) %>%
+                   terra::project(projected_crs)
 units(ad1400_popc_rast) = 'ppl/cell'
 
 download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw', './plague-db-europe.txt')
+
+death_raster = ad1400_popc_rast - ad1300_popc_rast
 ```
 
 
@@ -119,7 +136,8 @@ plague_df = do.call(rbind, lapply(json_lines,
                                   FUN = function(x){as.data.frame(jsonlite::fromJSON(x))})) #god what a hack
 plague_sf = st_as_sf(x=plague_df, 
                         coords=c('lon', 'lat'),
-                        crs=unprojected_crs)
+                        crs=unprojected_crs) %>%
+            st_transform(projected_crs)
 
 plague_occurrence_ordered = plague_sf[order(plague_sf$name, plague_sf$year, decreasing=FALSE),]
 plague_occurrences_by_year = plague_occurrence_ordered %>%
@@ -170,18 +188,12 @@ rm(json_lines)
 ```
 
 
-```{r death_rast, echo=FALSE, fig.cap="The \"death raster\" of population loss over the 14th century"}
-#should do operations on the projected data, for speed/simplicity's sake
-death_raster = ad1400_popc_rast - ad1300_popc_rast
-death_raster_proj = death_raster %>%
-                    terra::project(projected_crs)
+```{r project_everything, echo=FALSE, include=FALSE}
+```
 
-death_raster_im = death_raster_proj %>%
-                  raster() %>%
-                  as.im.RasterLayer() #will be defunct soon! should really do this the other way if i have time
 
-target_years_proj = target_years %>%
-                    st_transform(projected_crs)
+```{r test, echo=FALSE}
+tm_shape(basemap) + tm_rgb(alpha=0.7) + tm_shape(ad1300_popc_rast, raster.downsample = F) + tm_raster(alpha=0.7) + tm_shape(target_years) + tm_dots()
 ```
 
 
