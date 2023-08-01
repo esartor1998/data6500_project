@@ -1,0 +1,198 @@
+---
+title: "Report"
+author: "Eric Sartor"
+date: "`r Sys.Date()`"
+output: pdf_document
+bibliography: bibliography.bib
+csl: ieee.csl
+nocite: '@*'
+---
+
+## Introduction
+
+### Description of the Plague
+
+The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @jedwab_pandemics_2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @evans_pneumonic_2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @world_health_organization_plague_nodate. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @noauthor_plague_nodate, with death following shortly thereafter @pechous_pneumonic_2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. While it is more treatable than pneumonic plague, in the Middle Ages, as no treatment was known for any form of the disease, it shared pneumonic plague's certain mortality. 
+The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @world_health_organization_plague_nodate. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @hufthammer_rats_2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas @dean_human_2018.
+The recent digitization of a substantial volume of plague records @buntgen_digitizing_2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @klein_goldewijk_anthropogenic_2017 allow for myriad novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease various communities and environments can help to provide historical context for events and developments in the Middle Ages.
+
+### Data Sources
+
+* A digitized plague mentions dataset, including both mentions and well-known maritime trade routes @schmid_source_2015 compiled for the paper "Climate-driven introduction of the Black Death and successive plague reintroductions into Europe" @schmid_climate-driven_2015
+* HYDE 3.2 @klein_goldewijk_anthropogenic_2017, a monumental collection of rasters, encoding global environmental conditions and other information, including the most recent historical population and population density estimates currently available for pre-census speriods.
+* Approximate European borders shapefile for 1279 from a ThinkQuest educational web-site design competition held in 2000 @thinkquest_citation_post_rework. While this data is entirely student-created and may present minor inaccuracies, as it is used simply for the purposes of aiding in visualization, this is not a major concern.
+
+
+```{r setup, include=FALSE, echo=FALSE}
+library(sf)
+library(sp)
+library(maptools)
+library(terra)
+library(tidyverse)
+library(osmdata)
+library(tmap)
+library(tmaptools)
+library(rjson)
+library(spatstat)
+library(raster)
+library(INLA)
+library(utils)
+#some "important" "globals" and setup
+#NOTE: much of this code is reused from my EDA/presentation code, with large
+#chunks cut out of it because they weren't necessary to do in this report
+tmap_mode('plot')
+projected_crs = 'EPSG:3035'
+unprojected_crs = 'EPSG:4326'
+bbox = st_bbox(c(xmin = -16.26,
+                 xmax = 42.98,
+                 ymin = 27.92,
+                 ymax = 61.54),
+                 crs=unprojected_crs)
+cropping_bbox = vect(st_as_sfc(bbox))
+milan_location = st_point(c(45.4643, 9.189), dim='XY') %>%
+                 st_sfc() %>%
+                 as_Spatial()
+crs(milan_location) = unprojected_crs
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
+```
+
+```{r download_and_prep_data, echo=FALSE, include=FALSE}
+basemap = read_osm(bbox, type='apple-iphoto', mergeTiles=TRUE)
+
+download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw', './combined-maritime-traderoutes.csv')
+maritime_routes_sf = read_sf('./combined-maritime-traderoutes.csv')
+st_crs(maritime_routes_sf) = unprojected_crs
+maritime_routes_sf = st_crop(maritime_routes_sf, bbox)
+
+download.file('https://a.scrunko.monster/ZIwO3/ViBOtUXO82.tar/raw', './1279_borders.tar')
+untar(tarfile = './1279_borders.tar')
+borders = read_sf('./cntry1279.shp')
+st_crs(borders) = unprojected_crs
+borders = st_crop(borders, bbox)
+
+download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw', './popc_1300AD.asc')
+ad1300_popc_rast = rast('./popc_1300AD.asc') %>%
+                  project(unprojected_crs) %>%
+                  #focal(w=3, na.policy="only", fun=mean) %>%
+                  crop(cropping_bbox)
+units(ad1300_popc_rast) = 'ppl/cell'
+
+download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw', './popd_1300AD.asc')
+ad1300_popd_rast = rast('./popd_1300AD.asc') %>%
+                   project(unprojected_crs) %>%
+                   #focal(w=3, na.policy="only", fun=mean) %>% #to fix the NA issue where points are "over water"
+                   crop(cropping_bbox)
+units(ad1300_popd_rast) = 'ppl/km²'
+
+download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw', './popc_1400AD.asc')
+ad1400_popc_rast = rast('./popc_1400AD.asc') %>%
+                  project(unprojected_crs) %>%
+                  crop(cropping_bbox)
+units(ad1400_popc_rast) = 'ppl/cell'
+
+download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw', './plague-db-europe.txt')
+```
+
+
+```{python process_plague_info, echo=FALSE}
+import re
+import os
+
+if not (os.path.exists('./plague_reprocessed.json')):
+  with open('./plague-db-europe.txt', 'r') as plague_data:
+    plague_data_text = plague_data.read()
+    processed = re.sub(r'\:([a-zA-Z]+)', r'"\1":', plague_data_text)
+    processed = re.sub(r'} ', r'}, ', processed)
+    with open('./plague_reprocessed.json', 'w') as outfile:
+      n = outfile.write(processed)
+      outfile.close()
+```
+
+
+```{r read_plague_info, echo=FALSE}
+library(jsonlite)
+library(readr)
+
+json_raw   = readr::read_file("./plague_reprocessed.json")
+json_lines = unlist(strsplit(json_raw, "\\n"))
+plague_df = do.call(rbind, lapply(json_lines, 
+                                  FUN = function(x){as.data.frame(jsonlite::fromJSON(x))})) #god what a hack
+plague_sf = st_as_sf(x=plague_df, 
+                        coords=c('lon', 'lat'),
+                        crs=unprojected_crs)
+
+plague_occurrence_ordered = plague_sf[order(plague_sf$name, plague_sf$year, decreasing=FALSE),]
+plague_occurrences_by_year = plague_occurrence_ordered %>%
+                            group_by(year) %>%
+                            arrange(year)
+
+first_occurrences = plague_occurrences_by_year[!duplicated(plague_occurrences_by_year$name),] %>%
+                    rename(first_occurrence = year) %>%
+                    data.frame() %>%
+                    subset(select=-c(geometry, source))
+
+plague_occurrences_by_year = merge(plague_occurrences_by_year, first_occurrences, by='name')
+
+target_occurrences = plague_occurrences_by_year[which(plague_occurrences_by_year$year < 1400),]
+
+#thanks to baseR for the following function actually
+target_occurrences['is_reoccurrence'] = duplicated(target_occurrences$name)
+occurrence_count = as.data.frame(table(target_occurrences$name))
+occurrence_count = rename(occurrence_count, name = Var1)
+target_occurrences = merge(target_occurrences, occurrence_count, by='name', all.x=T) %>%
+                          rename(n_occurrences = Freq)
+#only interested in years before 1400 right now
+
+target_occurrences = st_as_sf(target_occurrences) %>% 
+                    st_crop(bbox) %>%
+                    arrange(year)
+                    #to remind it (it apparently forgets here)
+
+recorded_years = unique(target_occurrences$year)
+first_year = recorded_years[0]
+
+target_years = target_occurrences[which(target_occurrences$year < 1400),]
+rec_target_years = unique(target_years$year)
+```
+
+
+```{r garbage_collection, echo=FALSE, include=FALSE}
+#just to clean up exec environment of tempvars. 
+#ik if i used more piping i wouldnt have to do this, but i don't care atm
+rm(plague_occurrence_ordered)
+rm(plague_occurences_by_year)
+rm(occurrence_count)
+rm(target_occurrences)
+rm(plague_df)
+rm(plague_sf)
+rm(json_raw)
+rm(json_lines)
+```
+
+
+```{r death_rast, echo=FALSE, fig.cap="The \"death raster\" of population loss over the 14th century"}
+#should do operations on the projected data, for speed/simplicity's sake
+death_raster = ad1400_popc_rast - ad1300_popc_rast
+death_raster_proj = death_raster %>%
+                    terra::project(projected_crs)
+
+death_raster_im = death_raster_proj %>%
+                  raster() %>%
+                  as.im.RasterLayer() #will be defunct soon! should really do this the other way if i have time
+
+target_years_proj = target_years %>%
+                    st_transform(projected_crs)
+```
+
+
+## Results
+
+### Placeholder Subsection 1
+
+### Placeholder Subsection 2
+
+## References
+
+
+<br>\
+<div id="refs"></div>
