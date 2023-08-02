@@ -227,12 +227,8 @@ target_years = all_target_years[which(all_target_years$year > 1345 & all_target_
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
-#this needed some tinkering in order to get looking decent, and will likely need more
-#tinkering in order to create a sensible mode
-
-rt_rasters = list()
+infn_rasters = list()
 maps = list()
-
 #using some vectorized function may be 'faster', but i don't know if i could build all elems @ once,
 #because of scoping (each iteration would be within a new function call scope)
 #also it is not the looping overhead that makes this slow in any case, so it does not matter lawl
@@ -243,19 +239,20 @@ for (year in recorded_years) {
   prev_years_outbrks = target_years[which(target_years$year <= year),]
 	curr_year_outbrks = target_years[which(target_years$year == year),]
 	
-	rt_rasters[[curr_idx]] = 
+	#the distance component of r_t
+	dist_rast = 
 	  exp(1)^(-((terra::distance(ad1300_popc_rast, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
-  prev_rt = ifelse(prev_idx > 0,
-                   rt_rasters[prev_idx],
-                   1
-            ) #if this doesnt work irght im gonna kms
+
   print('curr')
   print(curr_idx)
   print('prev_rt')
   print(prev_rt)
 	
 	#THE MOST IMPORTANT LINE OF CODE:
-	raw_inf_rast = (rt_rasters[[curr_idx]] * sqrt(ad1300_popd_rast) * r0)
+	infn_rasters[[curr_idx]] = (dist_rast * sqrt(ad1300_popd_rast) * r0)
+	prev_infn = ifelse(prev_idx > 0, 
+	                  infn_rasters[prev_idx],
+                    1)
 	
 	maps[[curr_idx]] = 
 	  tm_shape(basemap) +
