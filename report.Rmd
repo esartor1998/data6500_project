@@ -221,12 +221,26 @@ year2idx = function(year) {
   return(which(recorded_years == year))
 } #convenience function for converting a year number to its results-index
 
+#because we are using a projection, the scaling for popc->popd is spatially warped
+popd_scaling_rast = ad1300_popd_rast / ad1300_popc_rast
+popc2popd = function(popc_rast) {
+  return(popc_rast * popd_scaling_rast)
+} #this is a convenience function to convert pop. count to pop. density anyways 
+
+
+#so, the r_prev doesn't matter, because yearly recurring outbreaks are recorded
+#but popd/popc decreases can be used to impl. a -temporal effect on r_t instead
+
+
+
 r0 = 1.765 #this is the unscaled, un-time-based value. also, its per-diem, so...
 
 target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year < 1351),]
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
+popc = list()
+popd = list()
 infn_rasters = list()
 maps = list()
 #using some vectorized function may be 'faster', but i don't know if i could build all elems @ once,
@@ -243,11 +257,6 @@ for (year in recorded_years) {
 	dist_rast = 
 	  exp(1)^(-((terra::distance(ad1300_popc_rast, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
 
-  print('curr')
-  print(curr_idx)
-  print('prev_rt')
-  print(prev_rt)
-	
 	#THE MOST IMPORTANT LINE OF CODE:
 	infn_rasters[[curr_idx]] = (dist_rast * sqrt(ad1300_popd_rast) * r0)
 	prev_infn = ifelse(prev_idx > 0, 
@@ -257,7 +266,7 @@ for (year in recorded_years) {
 	maps[[curr_idx]] = 
 	  tm_shape(basemap) +
 	    tm_rgb(alpha=0.7) +
-	  tm_shape(raw_inf_rast, raster.downsample=F) +
+	  tm_shape(infn_rasters[[curr_idx]], raster.downsample=F) +
 	    tm_raster(title='Raw Infectivity',
 	              legend.show=T,
 	              breaks=c(0,
@@ -286,6 +295,9 @@ for (year in recorded_years) {
               frame=FALSE,
               legend.bg.alpha=0.6,
               main.title=year)
+}
+for (i in 1:length(maps)) {
+  print(maps[[i]])
 }
 ```
 $$
