@@ -164,13 +164,8 @@ target_occurrences = merge(target_occurrences, occurrence_count, by='name', all.
 target_occurrences = st_as_sf(target_occurrences) %>% 
                     st_crop(bbox) %>%
                     arrange(year)
-                    #to remind it (it apparently forgets here)
 
-recorded_years = unique(target_occurrences$year)
-first_year = recorded_years[0]
-
-target_years = target_occurrences[which(target_occurrences$year < 1400),]
-rec_target_years = unique(target_years$year)
+all_target_years = target_occurrences[which(target_occurrences$year < 1400),]
 ```
 
 
@@ -188,14 +183,72 @@ rm(json_lines)
 ```
 
 
-```{r project_everything, echo=FALSE, include=FALSE}
-```
-
-
 ```{r test, echo=FALSE}
-tm_shape(basemap) + tm_rgb(alpha=0.7) + tm_shape(ad1300_popc_rast, raster.downsample = F) + tm_raster(alpha=0.7) + tm_shape(target_years) + tm_dots()
+tm_shape(basemap) +
+  tm_rgb(alpha=0.7) +
+  tm_shape(ad1300_popc_rast, raster.downsample = F) +
+  tm_raster(alpha=0.5, breaks=c(0.0,
+                                100.0,
+                                200.0,
+                                400.0,
+                                800.0,
+                                1600.0,
+                                3200.0,
+                                6400.0,
+                                12000.0,
+                                24000.0,
+                                48000.0),) +
+  tm_shape(all_target_years) +
+  tm_dots()
 ```
 
+spatial autocorrelation in the fact that outbreaks are considered based on distance from the pixel, and that there is s.ac. in the density/count data
+
+i *cannot* use linear population density scaling: *each cell's original size is warped by the projection*; as such, i need to obtain a per-pixel scaling value to convert pop to popd. this can easily be obtained by dividing ad1300_popd_rast by ad1300_popc_rast.
+
+starting 1300, for each year:
+- foreach pixel in population raster:
+  - scale/generate r0 using known r0, distance from outbreaks, popd, prev. r0 at that pixel
+  - apply this r0 and use fatality rate etc to gen. a new value at the px loc.
+    - also generate a new population density for the tile.
+
+
+```{r run_simulation_1, echo=FALSE}
+r0 = 1.765 #this is the unscaled, un-time-based value. also, its per-diem, so...
+
+target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year < 1351),]
+recorded_years = unique(target_years$year)
+first_year = recorded_years[0]
+
+scaling_func = function(x) {
+  return(exp(1)^(-x))
+}
+
+#this needed some tinkering in order to get looking decent, and will likely need more
+#tinkering in order to create a sensible mode
+distance = list()
+i = 0 #i see no need to use any fancy tricks here, when an iterating variable will work
+anim_coll = lapply(recorded_years, function(year) { #for all years
+  i = i + 1
+  prev_years = target_years[which(target_years$year <= year),]
+	curr_year = target_years[which(target_years$year == year),]
+	
+	dist_rast = exp(1)^(-((terra::distance(ad1300_popc_rast, vect(curr_year), rasterize=T)^(2/3))/2e3))
+	raw_inf_rast = (dist_rast * sqrt(ad1300_popd_rast) * r0)
+	
+	print(tm_shape(basemap) + tm_rgb(alpha=0.7) + tm_shape(raw_inf_rast, raster.downsample=F) + tm_raster(title='Raw Infectivity',legend.show=T) +
+	  tm_shape(maritime_routes_sf) + tm_lines(col='dodgerblue', alpha=0.5) +
+    tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
+		tm_shape(prev_years) + tm_dots(col='gray48') +
+	  tm_shape(curr_year) + tm_dots(col='is_reoccurrence', palette=c('red','blue'), legend.show=FALSE) +
+	  tm_add_legend(type=c('symbol'), labels=c("New Outbreak", 'Recurring Outbreak', 'Previous Outbreak'), col=c('red', 'blue', 'gray48')) +
+    tm_layout(legend.position=c("left", "top"), frame=FALSE, legend.bg.alpha=0.6, main.title=year))
+})
+
+```
+$$
+e^{-{x^{\sqrt[2]{3}}}}
+$$
 
 ## Results
 
