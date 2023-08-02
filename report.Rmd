@@ -212,39 +212,84 @@ starting 1300, for each year:
   - apply this r0 and use fatality rate etc to gen. a new value at the px loc.
     - also generate a new population density for the tile.
 
+- this does not account for migration in/out of cities as a result of population loss
 
-```{r run_simulation_1, echo=FALSE}
+-need to programmatically run this multiple times, with multiple different parameters, to compare
+
+```{r run_simulations_1, echo=FALSE}
+year2idx = function(year) {
+  return(which(recorded_years == year))
+} #convenience function for converting a year number to its results-index
+
 r0 = 1.765 #this is the unscaled, un-time-based value. also, its per-diem, so...
 
 target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year < 1351),]
 recorded_years = unique(target_years$year)
-first_year = recorded_years[0]
-
-scaling_func = function(x) {
-  return(exp(1)^(-x))
-}
+first_year = recorded_years[1]
 
 #this needed some tinkering in order to get looking decent, and will likely need more
 #tinkering in order to create a sensible mode
-distance = list()
-i = 0 #i see no need to use any fancy tricks here, when an iterating variable will work
-anim_coll = lapply(recorded_years, function(year) { #for all years
-  i = i + 1
-  prev_years = target_years[which(target_years$year <= year),]
-	curr_year = target_years[which(target_years$year == year),]
-	
-	dist_rast = exp(1)^(-((terra::distance(ad1300_popc_rast, vect(curr_year), rasterize=T)^(2/3))/2e3))
-	raw_inf_rast = (dist_rast * sqrt(ad1300_popd_rast) * r0)
-	
-	print(tm_shape(basemap) + tm_rgb(alpha=0.7) + tm_shape(raw_inf_rast, raster.downsample=F) + tm_raster(title='Raw Infectivity',legend.show=T) +
-	  tm_shape(maritime_routes_sf) + tm_lines(col='dodgerblue', alpha=0.5) +
-    tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
-		tm_shape(prev_years) + tm_dots(col='gray48') +
-	  tm_shape(curr_year) + tm_dots(col='is_reoccurrence', palette=c('red','blue'), legend.show=FALSE) +
-	  tm_add_legend(type=c('symbol'), labels=c("New Outbreak", 'Recurring Outbreak', 'Previous Outbreak'), col=c('red', 'blue', 'gray48')) +
-    tm_layout(legend.position=c("left", "top"), frame=FALSE, legend.bg.alpha=0.6, main.title=year))
-})
 
+rt_rasters = list()
+maps = list()
+
+#using some vectorized function may be 'faster', but i don't know if i could build all elems @ once,
+#because of scoping (each iteration would be within a new function call scope)
+#also it is not the looping overhead that makes this slow in any case, so it does not matter lawl
+for (year in recorded_years) {
+  curr_idx = year2idx(year) #NOT: not the idx in targ_years, just iter#
+  prev_idx = curr_idx - 1
+
+  prev_years_outbrks = target_years[which(target_years$year <= year),]
+	curr_year_outbrks = target_years[which(target_years$year == year),]
+	
+	rt_rasters[[curr_idx]] = 
+	  exp(1)^(-((terra::distance(ad1300_popc_rast, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
+  prev_rt = ifelse(prev_idx > 0,
+                   rt_rasters[prev_idx],
+                   1
+            ) #if this doesnt work irght im gonna kms
+  print('curr')
+  print(curr_idx)
+  print('prev_rt')
+  print(prev_rt)
+	
+	#THE MOST IMPORTANT LINE OF CODE:
+	raw_inf_rast = (rt_rasters[[curr_idx]] * sqrt(ad1300_popd_rast) * r0)
+	
+	maps[[curr_idx]] = 
+	  tm_shape(basemap) +
+	    tm_rgb(alpha=0.7) +
+	  tm_shape(raw_inf_rast, raster.downsample=F) +
+	    tm_raster(title='Raw Infectivity',
+	              legend.show=T,
+	              breaks=c(0,
+	                       1,
+	                       2,
+	                       4,
+	                       8,
+	                       16,
+	                       32)) + #exponential scale again lawl
+	  tm_shape(maritime_routes_sf) +
+	    tm_lines(col='dodgerblue', alpha=0.5) +
+    tm_shape(borders$geometry) +
+	    tm_borders(alpha=0.5) + 
+		tm_shape(prev_years_outbrks) +
+		  tm_dots(col='gray48') +
+	  tm_shape(curr_year_outbrks) +
+		  tm_dots(col='is_reoccurrence',
+		          palette=c('red','blue'),
+		          legend.show=FALSE) +
+	  tm_add_legend(type=c('symbol'),
+	                labels=c("New Outbreak",
+	                         'Recurring Outbreak',
+	                         'Previous Outbreak'),
+	                col=c('red', 'blue', 'gray48')) +
+    tm_layout(legend.position=c("left", "top"),
+              frame=FALSE,
+              legend.bg.alpha=0.6,
+              main.title=year)
+}
 ```
 $$
 e^{-{x^{\sqrt[2]{3}}}}
