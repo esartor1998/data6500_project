@@ -227,22 +227,25 @@ popc2popd = function(popc_rast) {
   return(popc_rast * popd_scaling_rast)
 } #this is a convenience function to convert pop. count to pop. density anyways 
 
-
-#so, the r_prev doesn't matter, because yearly recurring outbreaks are recorded
-#but popd/popc decreases can be used to impl. a -temporal effect on r_t instead
-
-
-
-r0 = 1.765 #this is the unscaled, un-time-based value. also, its per-diem, so...
-
 target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year < 1351),]
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
+susceptible = list()
+infected = list()
+recovered = list()
+dead = list()
 popc = list()
 popd = list()
-infn_rasters = list()
 maps = list()
+
+#model value estimates. when running multi-model method, these could be lists.
+r0 = 1.765 #this is the unscaled, un-time-based value. also, its per-diem, so...
+mortality = 0.8
+infect_period = 10.0 #in days, M. Greenwood Jr. (1910). this stat is for bubonic, but...
+#implication: `mortality`% of people die after `infect_period` days after their infection,
+#             and the remaining alive are no longer infectious after this period.
+
 #using some vectorized function may be 'faster', but i don't know if i could build all elems @ once,
 #because of scoping (each iteration would be within a new function call scope)
 #also it is not the looping overhead that makes this slow in any case, so it does not matter lawl
@@ -253,20 +256,21 @@ for (year in recorded_years) {
   prev_years_outbrks = target_years[which(target_years$year <= year),]
 	curr_year_outbrks = target_years[which(target_years$year == year),]
 	
-	#the distance component of r_t
-	dist_rast = 
+	#the distance component of r_t. exponential decay based on (scaled) distance
+	dist_rast =
 	  exp(1)^(-((terra::distance(ad1300_popc_rast, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
 
-	#THE MOST IMPORTANT LINE OF CODE:
-	infn_rasters[[curr_idx]] = (dist_rast * sqrt(ad1300_popd_rast) * r0)
-	prev_infn = ifelse(prev_idx > 0, 
-	                  infn_rasters[prev_idx],
-                    1)
+	#the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
+	infn_raster = (dist_rast * r0)
+	plot(infn_raster)
+	
+	#the estimate of the infected. should i use terra::predict, or...?
+	infected[[curr_idx]] = 
 	
 	maps[[curr_idx]] = 
 	  tm_shape(basemap) +
 	    tm_rgb(alpha=0.7) +
-	  tm_shape(infn_rasters[[curr_idx]], raster.downsample=F) +
+	  tm_shape(infected[[curr_idx]], raster.downsample=F) +
 	    tm_raster(title='Raw Infectivity',
 	              legend.show=T,
 	              breaks=c(0,
@@ -299,6 +303,20 @@ for (year in recorded_years) {
 for (i in 1:length(maps)) {
   print(maps[[i]])
 }
+
+	tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(ad1300_popc_rast, raster.downsample=F) + tm_raster(alpha=0.7,
+	                                                                   breaks=c(0.0,
+                                                                              100.0,
+                                                                              200.0,
+                                                                              400.0,
+                                                                              800.0,
+                                                                              1600.0,
+                                                                              3200.0,
+                                                                              6400.0,
+                                                                              12000.0,
+                                                                              24000.0,
+                                                                              48000.0),
+	                                                                   title='Pop. Count Scale',legend.show=T)
 ```
 $$
 e^{-{x^{\sqrt[2]{3}}}}
