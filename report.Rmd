@@ -223,12 +223,13 @@ popc_cell_size = terra::cellSize(ad1300_popc_rast, unit='km')
 #not entirely sure why this data got put into hectares by default but whatever
 
 popc2popd = function(popc_rast) {
-  return(popc_rast / popc_cell_size)
+  raw_conv_raster = popc_rast / popc_cell_size
+  return(raw_conv_raster - (raw_conv_raster - ad1300_popd_rast))
 }
 
 #error checking this...
 tm_shape(popc2popd(ad1300_popc_rast) - ad1300_popd_rast) +
-  tm_raster(n=30, title='Diff. in popd from actual in 1300')
+  tm_raster(n=30, title='Diff. in converted popd from actual in 1300')
 #very consistent~
 #there are some very slight discrepancies where other sources have been used than just population
 #count in order to estimate density in HYDE, but really it's pretty decently accurate
