@@ -222,9 +222,10 @@ year2idx = function(year) {
 } #convenience function for converting a year number to its results-index
 
 #because we are using a projection, the scaling for popc->popd is spatially warped
-popd_scaling_rast = ad1300_popd_rast / ad1300_popc_rast
+#but... this "popd scaling raster" is completely insane and doesnt work LAWL
+popd_scaling_rast = ad1300_popc_rast / ad1300_popd_rast
 popc2popd = function(popc_rast) {
-  return(popc_rast * popd_scaling_rast)
+  return(popc_rast / popd_scaling_rast)
 } #this is a convenience function to convert pop. count to pop. density anyways 
 
 target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year < 1351),]
@@ -235,16 +236,17 @@ susceptible = list()
 infected = list()
 recovered = list()
 dead = list()
-popc = list()
-popd = list()
+
+susd = list()
 maps = list()
 
 #model value estimates. when running multi-model method, these could be lists.
-r0 = 1.765 #this is the unscaled, un-time-based value. also, its per-diem, so...
-mortality = 0.8
+r0 = 1.765 #this is the unscaled, un-time-based value. also, its per-diem, so... (cite this moron)
+mortality = 0.8 #cite the papers that you inferred/calc'd this from
 infect_period = 10.0 #in days, M. Greenwood Jr. (1910). this stat is for bubonic, but...
 #implication: `mortality`% of people die after `infect_period` days after their infection,
 #             and the remaining alive are no longer infectious after this period.
+#this model does not use this yet, but a second, more complicated model will
 
 #using some vectorized function may be 'faster', but i don't know if i could build all elems @ once,
 #because of scoping (each iteration would be within a new function call scope)
@@ -256,30 +258,47 @@ for (year in recorded_years) {
   prev_years_outbrks = target_years[which(target_years$year <= year),]
 	curr_year_outbrks = target_years[which(target_years$year == year),]
 	
+	susc_tmp = if(length(susceptible) == 0) ad1300_popc_rast else susceptible[[prev_idx]]
+	
+	susd_tmp = if(length(susd) == 0) ad1300_popd_rast else susd[[prev_idx]]
+	
+	print(class(susc_tmp))
+	print(class(susd_tmp))
 	#the distance component of r_t. exponential decay based on (scaled) distance
 	dist_rast =
-	  exp(1)^(-((terra::distance(ad1300_popc_rast, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
+	  exp(1)^(-((terra::distance(susc_tmp, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
 
 	#the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
 	infn_raster = (dist_rast * r0)
 	plot(infn_raster)
 	
 	#the estimate of the infected. should i use terra::predict, or...?
-	infected[[curr_idx]] = 
+	#simple model. density is exponential, which is good for us
+	infected[[curr_idx]] = susd_tmp * infn_raster * 36.5
+	#and, the other values associated:
+	susceptible[[curr_idx]] = susc_tmp - infected[[curr_idx]] #even if survived, cant be reinfected
+	dead[[curr_idx]] = mortality * infected[[curr_idx]]
+	recovered = infected[[curr_idx]] - dead[[curr_idx]] #R,D not really used, but hey. good 2 know
+	
+	#we musn't forget to also adjust the susceptible population density
+	susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]])
 	
 	maps[[curr_idx]] = 
 	  tm_shape(basemap) +
 	    tm_rgb(alpha=0.7) +
-	  tm_shape(infected[[curr_idx]], raster.downsample=F) +
-	    tm_raster(title='Raw Infectivity',
+	  tm_shape(dead[[curr_idx]], raster.downsample=F) +
+	    tm_raster(title='Estimated Infected',
 	              legend.show=T,
 	              breaks=c(0,
-	                       1,
-	                       2,
-	                       4,
-	                       8,
-	                       16,
-	                       32)) + #exponential scale again lawl
+	                       50,
+	                       100,
+	                       200,
+	                       400,
+	                       800,
+	                       1600,
+	                       3200,
+	                       6400,
+	                       12800)) + #exponential scale
 	  tm_shape(maritime_routes_sf) +
 	    tm_lines(col='dodgerblue', alpha=0.5) +
     tm_shape(borders$geometry) +
@@ -303,20 +322,27 @@ for (year in recorded_years) {
 for (i in 1:length(maps)) {
   print(maps[[i]])
 }
+#for (i in 1:length(susd)) {
+  print(tm_shape(popd_scaling_rast) + 
+          tm_raster())
+#}
 
-	tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(ad1300_popc_rast, raster.downsample=F) + tm_raster(alpha=0.7,
-	                                                                   breaks=c(0.0,
-                                                                              100.0,
-                                                                              200.0,
-                                                                              400.0,
-                                                                              800.0,
-                                                                              1600.0,
-                                                                              3200.0,
-                                                                              6400.0,
-                                                                              12000.0,
-                                                                              24000.0,
-                                                                              48000.0),
-	                                                                   title='Pop. Count Scale',legend.show=T)
+	tm_shape(basemap) +
+	  tm_rgb(alpha=0.8) +
+	  tm_shape(ad1300_popc_rast, raster.downsample=F) +
+	  tm_raster(alpha=0.7, 
+	            breaks=c(0.0,
+                       100.0,
+                       200.0,
+                       400.0,
+                       800.0,
+                       1600.0,
+                       3200.0,
+                       6400.0,
+                       12000.0,
+                       24000.0,
+                       48000.0),
+	                     title='Pop. Count Scale',legend.show=T)
 ```
 $$
 e^{-{x^{\sqrt[2]{3}}}}
