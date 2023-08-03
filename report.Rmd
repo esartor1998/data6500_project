@@ -204,7 +204,8 @@ tm_shape(basemap) +
 
 spatial autocorrelation in the fact that outbreaks are considered based on distance from the pixel, and that there is s.ac. in the density/count data
 
-i *cannot* use linear population density scaling: *each cell's original size is warped by the projection*; as such, i need to obtain a per-pixel scaling value to convert pop to popd. this can easily be obtained by dividing ad1300_popd_rast by ad1300_popc_rast.
+i *cannot* use linear population density scaling: *each cell's original size is warped by the projection*; as such, i need to obtain a per-pixel scaling value to convert pop to popd. luckily, terra has a "cellsize" function we can use to calculate
+
 
 starting 1300, for each year:
 - foreach pixel in population raster:
@@ -217,16 +218,26 @@ starting 1300, for each year:
 -need to programmatically run this multiple times, with multiple different parameters, to compare
 
 ```{r run_simulations_1, echo=FALSE}
+#because we are using a projection, the scaling for popc->popd is spatially warped:
+popc_cell_size = terra::cellSize(ad1300_popc_rast, unit='km')
+#not entirely sure why this data got put into hectares by default but whatever
+
+popc2popd = function(popc_rast) {
+  return(popc_rast / popc_cell_size)
+}
+
+#error checking this...
+tm_shape(popc2popd(ad1300_popc_rast) - ad1300_popd_rast) +
+  tm_raster(n=30, title='Diff. in popd from actual in 1300')
+#very consistent~
+#there are some very slight discrepancies where other sources have been used than just population
+#count in order to estimate density in HYDE, but really it's pretty decently accurate
+#so, in order to account for these discrepancies, we can just add them in the conversion :)
+
 year2idx = function(year) {
   return(which(recorded_years == year))
 } #convenience function for converting a year number to its results-index
 
-#because we are using a projection, the scaling for popc->popd is spatially warped
-#but... this "popd scaling raster" is completely insane and doesnt work LAWL
-popd_scaling_rast = ad1300_popc_rast / ad1300_popd_rast
-popc2popd = function(popc_rast) {
-  return(popc_rast / popd_scaling_rast)
-} #this is a convenience function to convert pop. count to pop. density anyways 
 
 target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year < 1351),]
 recorded_years = unique(target_years$year)
@@ -262,15 +273,13 @@ for (year in recorded_years) {
 	
 	susd_tmp = if(length(susd) == 0) ad1300_popd_rast else susd[[prev_idx]]
 	
-	print(class(susc_tmp))
-	print(class(susd_tmp))
 	#the distance component of r_t. exponential decay based on (scaled) distance
 	dist_rast =
 	  exp(1)^(-((terra::distance(susc_tmp, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
 
 	#the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
 	infn_raster = (dist_rast * r0)
-	plot(infn_raster)
+	#plot(infn_raster)
 	
 	#the estimate of the infected. should i use terra::predict, or...?
 	#simple model. density is exponential, which is good for us
@@ -281,12 +290,12 @@ for (year in recorded_years) {
 	recovered = infected[[curr_idx]] - dead[[curr_idx]] #R,D not really used, but hey. good 2 know
 	
 	#we musn't forget to also adjust the susceptible population density
-	susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]])
+	susd[[curr_idx]] = susceptible[[curr_idx]] / 4 #tmp
 	
 	maps[[curr_idx]] = 
 	  tm_shape(basemap) +
 	    tm_rgb(alpha=0.7) +
-	  tm_shape(dead[[curr_idx]], raster.downsample=F) +
+	  tm_shape(infected[[curr_idx]], raster.downsample=F) +
 	    tm_raster(title='Estimated Infected',
 	              legend.show=T,
 	              breaks=c(0,
@@ -323,8 +332,8 @@ for (i in 1:length(maps)) {
   print(maps[[i]])
 }
 #for (i in 1:length(susd)) {
-  print(tm_shape(popd_scaling_rast) + 
-          tm_raster())
+#  print(tm_shape(susd[[i]]) + 
+#          tm_raster())
 #}
 
 	tm_shape(basemap) +
