@@ -68,14 +68,16 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FAL
 basemap = read_osm(bbox, type='apple-iphoto', mergeTiles=TRUE)
 #i think these tiles are already in web mercator
 
-download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw', './combined-maritime-traderoutes.csv')
+download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw',
+              './combined-maritime-traderoutes.csv')
 maritime_routes_sf = read_sf('./combined-maritime-traderoutes.csv')
 st_crs(maritime_routes_sf) = unprojected_crs
 maritime_routes_sf = st_transform(maritime_routes_sf, projected_crs) %>%
                      st_crop(bbox)
 
 download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/master/1279.zip', 
-              './1279_borders.zip') #download directly from an archive, as streaming from my server crashes on Win
+              './1279_borders.zip') #download directly from an archive, as streaming from my server
+                                    #crashes on windows (i think some sort of php bug on the serv.)
                                     #note: make sure to cite this archive in the bibliography!! 
 unzip('./1279_borders.zip')
 borders = read_sf('./cntry1279.shp')
@@ -83,29 +85,34 @@ st_crs(borders) = unprojected_crs
 borders = st_transform(borders, projected_crs) %>%
           st_crop(bbox)
 
-download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw', './popc_1300AD.asc')
+download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw',
+              './popc_1300AD.asc')
 ad1300_popc_rast = rast('./popc_1300AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox) %>%
-                   terra::project(projected_crs) #yes, this seems insane, but otherwise terra downsamples to hell
-                                                 #or crashes if you try to specify the correct resolution
+                   terra::project(projected_crs) #yes, this seems insane, but otherwise terra 
+                                                 #downsamples to hell or crashes if you try to
+                                                 #specify the correct resolution
 units(ad1300_popc_rast) = 'ppl/cell'
 
-download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw', './popd_1300AD.asc')
+download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw',
+              './popd_1300AD.asc')
 ad1300_popd_rast = rast('./popd_1300AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox) %>%
                    terra::project(projected_crs)
 units(ad1300_popd_rast) = 'ppl/km²'
 
-download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw', './popc_1400AD.asc')
+download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw',
+              './popc_1400AD.asc')
 ad1400_popc_rast = rast('./popc_1400AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox) %>%
                    terra::project(projected_crs)
 units(ad1400_popc_rast) = 'ppl/cell'
 
-download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw', './plague-db-europe.txt')
+download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw',
+              './plague-db-europe.txt')
 
 death_raster = ad1400_popc_rast - ad1300_popc_rast
 ```
@@ -132,8 +139,8 @@ library(readr)
 
 json_raw   = readr::read_file("./plague_reprocessed.json")
 json_lines = unlist(strsplit(json_raw, "\\n"))
-plague_df = do.call(rbind, lapply(json_lines, 
-                                  FUN = function(x){as.data.frame(jsonlite::fromJSON(x))})) #god what a hack
+plague_df = do.call(rbind, lapply(json_lines, #god what a hack
+                                  FUN = function(x){as.data.frame(jsonlite::fromJSON(x))})) 
 plague_sf = st_as_sf(x=plague_df, 
                         coords=c('lon', 'lat'),
                         crs=unprojected_crs) %>%
@@ -225,15 +232,7 @@ popc_cell_size = terra::cellSize(ad1300_popc_rast, unit='km')
 popc2popd = function(popc_rast) {
   raw_conv_raster = popc_rast / popc_cell_size
   return(raw_conv_raster - (raw_conv_raster - ad1300_popd_rast))
-}
-
-#error checking this...
-tm_shape(popc2popd(ad1300_popc_rast) - ad1300_popd_rast) +
-  tm_raster(n=30, title='Diff. in converted popd from actual in 1300')
-#very consistent~
-#there are some very slight discrepancies where other sources have been used than just population
-#count in order to estimate density in HYDE, but really it's pretty decently accurate
-#so, in order to account for these discrepancies, we can just add them in the conversion :)
+} #subtracting 1300_popd is valid, as that is the last known offset to the true number
 
 year2idx = function(year) {
   return(which(recorded_years == year))
@@ -268,62 +267,63 @@ for (year in recorded_years) {
   prev_idx = curr_idx - 1
 
   prev_years_outbrks = target_years[which(target_years$year <= year),]
-	curr_year_outbrks = target_years[which(target_years$year == year),]
-	
-	susc_tmp = if(length(susceptible) == 0) ad1300_popc_rast else susceptible[[prev_idx]]
-	
-	susd_tmp = if(length(susd) == 0) ad1300_popd_rast else susd[[prev_idx]]
-	
-	#the distance component of r_t. exponential decay based on (scaled) distance
-	dist_rast =
-	  exp(1)^(-((terra::distance(susc_tmp, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
-
-	#the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
-	infn_raster = (dist_rast * r0)
-	#plot(infn_raster)
-	
-	#the estimate of the infected. should i use terra::predict, or...?
-	#simple model. density is exponential, which is good for us
-	infected[[curr_idx]] = susd_tmp * infn_raster * 36.5
-	#and, the other values associated:
-	susceptible[[curr_idx]] = susc_tmp - infected[[curr_idx]] #even if survived, cant be reinfected
-	dead[[curr_idx]] = mortality * infected[[curr_idx]]
-	recovered = infected[[curr_idx]] - dead[[curr_idx]] #R,D not really used, but hey. good 2 know
-	
-	#we musn't forget to also adjust the susceptible population density
-	susd[[curr_idx]] = susceptible[[curr_idx]] / 4 #tmp
-	
-	maps[[curr_idx]] = 
-	  tm_shape(basemap) +
-	    tm_rgb(alpha=0.7) +
-	  tm_shape(infected[[curr_idx]], raster.downsample=F) +
-	    tm_raster(title='Estimated Infected',
-	              legend.show=T,
-	              breaks=c(0,
-	                       50,
-	                       100,
-	                       200,
-	                       400,
-	                       800,
-	                       1600,
-	                       3200,
-	                       6400,
-	                       12800)) + #exponential scale
-	  tm_shape(maritime_routes_sf) +
-	    tm_lines(col='dodgerblue', alpha=0.5) +
+  curr_year_outbrks = target_years[which(target_years$year == year),]
+  
+  susc_tmp = if(length(susceptible) == 0) ad1300_popc_rast else susceptible[[prev_idx]]
+  
+  susd_tmp = if(length(susd) == 0) ad1300_popd_rast else susd[[prev_idx]]
+  
+  #the distance component of r_t. exponential decay based on (scaled) distance. scaled, shifted, and
+  #tapered so that it is sane and reaches 0 at a "reasonable" distance 
+  dist_rast =
+    exp(1)^(-((terra::distance(susc_tmp, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
+  print(dist_rast)
+  #the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
+  infn_raster = (dist_rast * r0)
+  #plot(infn_raster)
+  
+  #the estimate of the infected. should i use terra::predict, or...?
+  #simple model. density is exponential, which is good for us
+  infected[[curr_idx]] = susd_tmp * infn_raster * 36.5
+  #and, the other values associated:
+  susceptible[[curr_idx]] = susc_tmp - infected[[curr_idx]] #even if survived, cant be reinfected
+  dead[[curr_idx]] = mortality * infected[[curr_idx]]
+  recovered = infected[[curr_idx]] - dead[[curr_idx]] #R,D not really used, but hey. good 2 know
+  
+  #we musn't forget to also adjust the susceptible population density
+  susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]]) 
+  
+  maps[[curr_idx]] = 
+    tm_shape(basemap) +
+      tm_rgb(alpha=0.7) +
+    tm_shape(infected[[curr_idx]], raster.downsample=F) +
+      tm_raster(title='Estimated Infected',
+                legend.show=T,
+                breaks=c(0,
+                         50,
+                         100,
+                         200,
+                         400,
+                         800,
+                         1600,
+                         3200,
+                         6400,
+                         12800)) + #exponential scale
+    tm_shape(maritime_routes_sf) +
+      tm_lines(col='dodgerblue', alpha=0.5) +
     tm_shape(borders$geometry) +
-	    tm_borders(alpha=0.5) + 
-		tm_shape(prev_years_outbrks) +
-		  tm_dots(col='gray48') +
-	  tm_shape(curr_year_outbrks) +
-		  tm_dots(col='is_reoccurrence',
-		          palette=c('red','blue'),
-		          legend.show=FALSE) +
-	  tm_add_legend(type=c('symbol'),
-	                labels=c("New Outbreak",
-	                         'Recurring Outbreak',
-	                         'Previous Outbreak'),
-	                col=c('red', 'blue', 'gray48')) +
+      tm_borders(alpha=0.5) + 
+    tm_shape(prev_years_outbrks) +
+      tm_dots(col='gray48') +
+    tm_shape(curr_year_outbrks) +
+      tm_dots(col='is_reoccurrence',
+              palette=c('red','blue'),
+              legend.show=FALSE) +
+    tm_add_legend(type=c('symbol'),
+                  labels=c("New Outbreak",
+                           'Recurring Outbreak',
+                           'Previous Outbreak'),
+                  col=c('red', 'blue', 'gray48')) +
     tm_layout(legend.position=c("left", "top"),
               frame=FALSE,
               legend.bg.alpha=0.6,
@@ -337,11 +337,11 @@ for (i in 1:length(maps)) {
 #          tm_raster())
 #}
 
-	tm_shape(basemap) +
-	  tm_rgb(alpha=0.8) +
-	  tm_shape(ad1300_popc_rast, raster.downsample=F) +
-	  tm_raster(alpha=0.7, 
-	            breaks=c(0.0,
+  tm_shape(basemap) +
+    tm_rgb(alpha=0.8) +
+    tm_shape(ad1300_popc_rast, raster.downsample=F) +
+    tm_raster(alpha=0.7, 
+              breaks=c(0.0,
                        100.0,
                        200.0,
                        400.0,
@@ -352,8 +352,10 @@ for (i in 1:length(maps)) {
                        12000.0,
                        24000.0,
                        48000.0),
-	                     title='Pop. Count Scale',legend.show=T)
+                       title='Pop. Count Scale',legend.show=T)
 ```
+
+
 $$
 e^{-{x^{\sqrt[2]{3}}}}
 $$
