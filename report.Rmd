@@ -302,8 +302,7 @@ for (year in recorded_years) {
     dist_coefficient*terra::distance(susc_tmp, vect(curr_year_outbrks))^dist_smoothing
   ))
   
-  dist_rast[dist_rast < distance_threshold] = 0
-  plot(susd_tmp, main=paste('susd', year))
+  dist_rast[dist_rast < dist_threshold] = 0
   #the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
   #this represents the scaling of the infectiousness over distance.
   infn_raster = (dist_rast * r0)
@@ -323,7 +322,7 @@ for (year in recorded_years) {
   maps[[curr_idx]] = 
     tm_shape(basemap) +
       tm_rgb(alpha=0.7) +
-    tm_shape(infected[[curr_idx]], raster.downsample=F) +
+    tm_shape(susceptible[[curr_idx]], raster.downsample=F) +
       tm_raster(title='Estimated Infected',
                 legend.show=T,
                 breaks=c(0,
@@ -360,27 +359,26 @@ for (year in recorded_years) {
 for (i in 1:length(maps)) {
   print(maps[[i]])
 }
-#for (i in 1:length(susd)) {
-#  print(tm_shape(susd[[i]]) + 
-#          tm_raster())
-#}
 
-  tm_shape(basemap) +
-    tm_rgb(alpha=0.8) +
-    tm_shape(ad1300_popc_rast, raster.downsample=F) +
-    tm_raster(alpha=0.7, 
-              breaks=c(0.0,
-                       100.0,
-                       200.0,
-                       400.0,
-                       800.0,
-                       1600.0,
-                       3200.0,
-                       6400.0,
-                       12000.0,
-                       24000.0,
-                       48000.0),
-                       title='Pop. Count Scale',legend.show=T)
+tm_shape(basemap) +
+  tm_rgb(alpha=0.8) +
+  tm_shape(ad1300_popc_rast, raster.downsample=F) +
+  tm_raster(alpha=0.7, 
+            breaks=c(0.0,
+                     100.0,
+                     200.0,
+                     400.0,
+                     800.0,
+                     1600.0,
+                     3200.0,
+                     6400.0,
+                     12000.0,
+                     24000.0,
+                     48000.0),
+                     title='Pop. Count Scale',legend.show=T)
+
+print('?')
+  
 ```
 
 
