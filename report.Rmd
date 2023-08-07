@@ -155,7 +155,7 @@ first_occurrences = plague_occurrences_by_year[!duplicated(plague_occurrences_by
 
 plague_occurrences_by_year = merge(plague_occurrences_by_year, first_occurrences, by='name')
 
-target_occurrences = plague_occurrences_by_year[which(plague_occurrences_by_year$year < 1400),]
+target_occurrences = plague_occurrences_by_year[which(plague_occurrences_by_year$year <= 1400),]
 
 #thanks to baseR for the following function actually
 target_occurrences['is_reoccurrence'] = duplicated(target_occurrences$name)
@@ -169,7 +169,7 @@ target_occurrences = st_as_sf(target_occurrences) %>%
                     st_crop(unproj_bbox) %>%
                     arrange(year)
 
-all_target_years = target_occurrences[which(target_occurrences$year < 1400),]
+all_target_years = target_occurrences[which(target_occurrences$year <= 1400),]
 ```
 
 
@@ -244,7 +244,7 @@ year2idx = function(year) {
 } #convenience function for converting a year number to its results-index
 
 
-target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year < 1351),]
+target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year <= 1400),]
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
@@ -257,27 +257,13 @@ susd = list()
 maps = list()
 susc_maps = list()
 
-#model values for the calculation of β per cell: 
+#extremely rough, 'death guesstimation' model:
 dist_smoothing = 0.4       #affects the size of the region extremely close to 1.0 in distance raster 
 dist_coefficient = 6       #affects the size of the overall region above 0.0 in distance raster
 dist_threshold = 0.01  #value at which we would like to round to 0, to prevent global infection
 
-r0 = 1.4 #using median of several estimates. this is per inf. period, so we need to scale for time
-#population density is a proxy for number of contacts/time in addition to whats included in r_0
-popd_maxadjust = 15.0
-#popd_maxadjust is the maximum additional number of contacts per time that popd can factor in
-#"transmission probability" we will say scales with distance from an outbreak for this model,
-#as well as the proportion of individuals in a given cell that are infected
+worst_case = 0.6 #assume that at most 20% of a cell can be I in any given outbreak yr (armstrong)
 
-mortality = 0.8 #cite the papers that you inferred/calc'd this from
-infect_period = 10.0 #in days, M. Greenwood Jr. (1910). this stat is for bubonic, but...
-#implication: `mortality`% of people die after `infect_period` days after their infection,
-#             and the remaining alive are no longer infectious after this period.
-#this model does not use this yet, but a second, more complicated model will
-
-#using some vectorized function may be 'faster', but i don't know if i could build all elems @ once,
-#because of scoping (each iteration would be within a new function call scope)
-#also it is not the looping overhead that makes this slow in any case, so it does not matter lawl
 for (year in recorded_years) {
   curr_idx = year2idx(year) #NOT: not the idx in targ_years, just iter#
   prev_idx = curr_idx - 1
@@ -287,26 +273,22 @@ for (year in recorded_years) {
 
   susc_tmp = if(length(susceptible) == 0) ad1300_popc_rast else susceptible[[prev_idx]]
   
-  susd_tmp = popd_maxadjust * normalize_rast(
+  susd_tmp = normalize_rast(
     if(length(susd) == 0) ad1300_popd_rast else susd[[prev_idx]]
   )
-  
-  #the distance component of r_t. exponential decay based on (scaled) distance. scaled, tapered, and
-  #clamped so that it is sane and reaches 0 at a "reasonable" distance.
-  #the 10 is so that the values e is raised to are between 0 and 10 (fractional exponents are weird)
-  dist_rast = exp(1)^(-10 * normalize_rast(
-    dist_coefficient*terra::distance(susc_tmp, vect(curr_year_outbrks))^dist_smoothing
+
+  dist_rast = exp(1)^(-3 * normalize_rast(
+    dist_coefficient*terra::distance(susc_tmp, vect(curr_year_outbrks), rasterize=T)^dist_smoothing
   ))
-  plot(dist_rast, main=paste('dist_rast', year))
   dist_rast[dist_rast < dist_threshold] = 0
+  #plot(dist_rast, main=paste('dist_rast', year))
   
   #the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
-  #this represents the scaling of the infectiousness over distance.
-  infn_rast = (dist_rast * susd_tmp)
-  plot(infn_rast, main=paste('infn_rast', year))
+  infn_rast = worst_case * dist_rast * susd_tmp
+  #plot(infn_rast, main=paste('infn_rast', year))
   
   #the estimate of the infected. should i use terra::predict, or...?
-  infected[[curr_idx]] = floor(r0 * infn_rast * 10)
+  infected[[curr_idx]] = floor(infn_rast * susc_tmp)
   #and, the other values associated:
   susceptible[[curr_idx]] = susc_tmp - infected[[curr_idx]] #even if survived, cant be reinfected
   dead[[curr_idx]] = mortality * infected[[curr_idx]]
@@ -314,7 +296,7 @@ for (year in recorded_years) {
   
   #we musn't forget to also adjust the susceptible population density
   susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]])
-  plot(susd[[curr_idx]], main=paste('susc. dens.', year)) #why is it always the same?
+  #plot(susd[[curr_idx]], main=paste('susc. dens.', year)) #why is it always the same?
   
   maps[[curr_idx]] = 
     tm_shape(basemap) +
@@ -337,17 +319,17 @@ for (year in recorded_years) {
       tm_lines(col='dodgerblue', alpha=0.5) +
     tm_shape(borders$geometry) +
       tm_borders(alpha=0.5) + 
-    tm_shape(prev_years_outbrks) +
-      tm_dots(col='gray48') +
-    tm_shape(curr_year_outbrks) +
-      tm_dots(col='is_reoccurrence',
-              palette=c('red','blue'),
-              legend.show=FALSE) +
-    tm_add_legend(type=c('symbol'),
-                  labels=c("New Outbreak",
-                           'Recurring Outbreak',
-                           'Previous Outbreak'),
-                  col=c('red', 'blue', 'gray48')) +
+    # tm_shape(prev_years_outbrks) +
+    #   tm_dots(col='gray48') +
+    # tm_shape(curr_year_outbrks) +
+    #   tm_dots(col='is_reoccurrence',
+    #           palette=c('red','blue'),
+    #           legend.show=FALSE) +
+    # tm_add_legend(type=c('symbol'),
+    #               labels=c("New Outbreak",
+    #                        'Recurring Outbreak',
+    #                        'Previous Outbreak'),
+    #               col=c('red', 'blue', 'gray48')) +
     tm_layout(legend.position=c("left", "top"),
               frame=FALSE,
               legend.bg.alpha=0.6,
@@ -355,49 +337,32 @@ for (year in recorded_years) {
   
   susc_maps[[curr_idx]] = 
     tm_shape(basemap) +
-      tm_rgb(alpha=0.7) +
+    tm_rgb(alpha=0.8) +
     tm_shape(susceptible[[curr_idx]], raster.downsample=F) +
-      tm_raster(title='Estimated Susceptible',
-                legend.show=T,
-                breaks=c(0.0,
-                         100.0,
-                         200.0,
-                         400.0,
-                         800.0,
-                         1600.0,
-                         3200.0,
-                         6400.0,
-                         12000.0,
-                         24000.0,
-                         48000.0)) + #exponential scale
-    tm_shape(maritime_routes_sf) +
-      tm_lines(col='dodgerblue', alpha=0.5) +
-    tm_shape(borders$geometry) +
-      tm_borders(alpha=0.5) + 
-    tm_shape(prev_years_outbrks) +
-      tm_dots(col='gray48') +
-    tm_shape(curr_year_outbrks) +
-      tm_dots(col='is_reoccurrence',
-              palette=c('red','blue'),
-              legend.show=FALSE) +
-    tm_add_legend(type=c('symbol'),
-                  labels=c("New Outbreak",
-                           'Recurring Outbreak',
-                           'Previous Outbreak'),
-                  col=c('red', 'blue', 'gray48')) +
-    tm_layout(legend.position=c("left", "top"),
-              frame=FALSE,
-              legend.bg.alpha=0.6,
-              main.title=year)
+    tm_raster(alpha=0.7, 
+              breaks=c(0.0,
+                       100.0,
+                       200.0,
+                       400.0,
+                       800.0,
+                       1600.0,
+                       3200.0,
+                       6400.0,
+                       12000.0,
+                       24000.0,
+                       48000.0),
+                       title='Modelled 1400AD Pop. Count',legend.show=T)
 }
-for (i in 1:length(maps)) {
-  print(maps[[i]])
-  print(susc_maps[[i]])
-}
+# for (i in 1:length(maps)) {
+#   print(maps[[i]])
+#   print(susc_maps[[i]])
+# }
+
+print(susc_maps[[year2idx(1400)]])
 
 tm_shape(basemap) +
   tm_rgb(alpha=0.8) +
-  tm_shape(ad1300_popc_rast, raster.downsample=F) +
+  tm_shape(ad1400_popc_rast, raster.downsample=F) +
   tm_raster(alpha=0.7, 
             breaks=c(0.0,
                      100.0,
@@ -410,10 +375,8 @@ tm_shape(basemap) +
                      12000.0,
                      24000.0,
                      48000.0),
-                     title='Pop. Count Scale',legend.show=T)
+                     title='HYDE 3.2 1400AD Pop. Count',legend.show=T)
 
-print('?')
-  
 ```
 
 
