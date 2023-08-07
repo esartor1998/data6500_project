@@ -40,7 +40,7 @@ library(utils)
 #NOTE: much of this code is reused from my EDA/presentation code, with large
 #chunks cut out of it because they weren't necessary to do in this report
 tmap_mode('plot')
-projected_crs = 'EPSG:3857' #switching for now to web mercator
+projected_crs = 'EPSG:3857'
 unprojected_crs = 'EPSG:4326'
 
 unproj_bbox = bbox = st_bbox(c(xmin = -16.26,
@@ -66,14 +66,14 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FAL
 
 ```{r download_and_prep_data, echo=FALSE, include=FALSE}
 basemap = read_osm(bbox, type='apple-iphoto', mergeTiles=TRUE)
-#i think these tiles are already in web mercator
+#should maybe project these too if i go back to that
 
 download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw',
               './combined-maritime-traderoutes.csv')
 maritime_routes_sf = read_sf('./combined-maritime-traderoutes.csv')
 st_crs(maritime_routes_sf) = unprojected_crs
-maritime_routes_sf = st_transform(maritime_routes_sf, projected_crs) %>%
-                     st_crop(bbox)
+maritime_routes_sf = st_transform(maritime_routes_sf, unprojected_crs) %>%
+                     st_crop(unproj_bbox)
 
 download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/master/1279.zip', 
               './1279_borders.zip') #download directly from an archive, as streaming from my server
@@ -82,33 +82,31 @@ download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/m
 unzip('./1279_borders.zip')
 borders = read_sf('./cntry1279.shp')
 st_crs(borders) = unprojected_crs
-borders = st_transform(borders, projected_crs) %>%
-          st_crop(bbox)
+borders = st_transform(borders, unprojected_crs) %>%
+          st_crop(unproj_bbox)
 
 download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw',
               './popc_1300AD.asc')
 ad1300_popc_rast = rast('./popc_1300AD.asc') %>%
                    terra::project(unprojected_crs) %>%
-                   crop(up_cbbox) %>%
-                   terra::project(projected_crs) #yes, this seems insane, but otherwise terra 
-                                                 #downsamples to hell or crashes if you try to
-                                                 #specify the correct resolution
+                   crop(up_cbbox) #%>%
+
 units(ad1300_popc_rast) = 'ppl/cell'
 
 download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw',
               './popd_1300AD.asc')
 ad1300_popd_rast = rast('./popd_1300AD.asc') %>%
                    terra::project(unprojected_crs) %>%
-                   crop(up_cbbox) %>%
-                   terra::project(projected_crs)
+                   crop(up_cbbox)
+
 units(ad1300_popd_rast) = 'ppl/km²'
 
 download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw',
               './popc_1400AD.asc')
 ad1400_popc_rast = rast('./popc_1400AD.asc') %>%
                    terra::project(unprojected_crs) %>%
-                   crop(up_cbbox) %>%
-                   terra::project(projected_crs)
+                   crop(up_cbbox)
+
 units(ad1400_popc_rast) = 'ppl/cell'
 
 download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw',
@@ -143,8 +141,7 @@ plague_df = do.call(rbind, lapply(json_lines, #god what a hack
                                   FUN = function(x){as.data.frame(jsonlite::fromJSON(x))})) 
 plague_sf = st_as_sf(x=plague_df, 
                         coords=c('lon', 'lat'),
-                        crs=unprojected_crs) %>%
-            st_transform(projected_crs)
+                        crs=unprojected_crs)
 
 plague_occurrence_ordered = plague_sf[order(plague_sf$name, plague_sf$year, decreasing=FALSE),]
 plague_occurrences_by_year = plague_occurrence_ordered %>%
@@ -169,7 +166,7 @@ target_occurrences = merge(target_occurrences, occurrence_count, by='name', all.
 #only interested in years before 1400 right now
 
 target_occurrences = st_as_sf(target_occurrences) %>% 
-                    st_crop(bbox) %>%
+                    st_crop(unproj_bbox) %>%
                     arrange(year)
 
 all_target_years = target_occurrences[which(target_occurrences$year < 1400),]
@@ -225,13 +222,21 @@ starting 1300, for each year:
 -need to programmatically run this multiple times, with multiple different parameters, to compare
 
 ```{r run_simulations_1, echo=FALSE}
-#because we are using a projection, the scaling for popc->popd is spatially warped:
+#not using equal-area projections, so the scaling for raster cells is spatially warped:
 popc_cell_size = terra::cellSize(ad1300_popc_rast, unit='km')
-#not entirely sure why this data got put into hectares by default but whatever
+#cell size shouldn't change, so we only need to do this one time
+#additionally, wemust offset here, as the data used to obtain popd uses more sources than just popc
+popd_offset = (ad1300_popc_rast / popc_cell_size) - ad1300_popd_rast
+#so, we need to generate an offset raster representing the initial starting offset from 
+#popc/cellsize present in the data, and then apply that retroactively going forward in the conv.
+
+normalize_rast = function(rast) {
+  m = terra::minmax(rast) #m[1] is min, m[2] is max
+  return((rast - m[1])/(m[2] - m[1]))
+}
 
 popc2popd = function(popc_rast) {
-  raw_conv_raster = popc_rast / popc_cell_size
-  return(raw_conv_raster - (raw_conv_raster - ad1300_popd_rast))
+  return((popc_rast / popc_cell_size) - popd_offset)
 } #subtracting 1300_popd is valid, as that is the last known offset to the true number
 
 year2idx = function(year) {
@@ -251,8 +256,19 @@ dead = list()
 susd = list()
 maps = list()
 
-#model value estimates. when running multi-model method, these could be lists.
-r0 = 1.765 #this is the unscaled, un-time-based value. also, its per-diem, so... (cite this moron)
+#model values for the calculation of β per cell: 
+dist_smoothing = 0.4       #affects the size of the region extremely close to 1.0 in distance raster 
+dist_coefficient = 6       #affects the size of the overall region above 0.0 in distance raster
+dist_threshold = 0.00000001#value at which we would like to round to 0, to prevent global infection
+
+r0 = 1.4 #using median of several estimates. this is per inf. period, so we need to scale for time
+r0 = r0 * 36.5 #so very oversimplified
+#population density is a proxy for number of contacts/time in addition to whats included in r_0
+popd_maxadjust = 15.0 * 36.5
+#popd_maxadjust is the maximum additional number of contacts per time that popd can factor in
+#"transmission probability" we will say scales with distance from an outbreak for this model,
+#as well as the proportion of individuals in a given cell that are infected
+
 mortality = 0.8 #cite the papers that you inferred/calc'd this from
 infect_period = 10.0 #in days, M. Greenwood Jr. (1910). this stat is for bubonic, but...
 #implication: `mortality`% of people die after `infect_period` days after their infection,
@@ -268,30 +284,41 @@ for (year in recorded_years) {
 
   prev_years_outbrks = target_years[which(target_years$year <= year),]
   curr_year_outbrks = target_years[which(target_years$year == year),]
-  
+
   susc_tmp = if(length(susceptible) == 0) ad1300_popc_rast else susceptible[[prev_idx]]
   
-  susd_tmp = if(length(susd) == 0) ad1300_popd_rast else susd[[prev_idx]]
+  if (length(susceptible) != 0) {
+    plot(cumsum(recovered), main=paste('cumsum recovered', year))
+  }
   
-  #the distance component of r_t. exponential decay based on (scaled) distance. scaled, shifted, and
-  #tapered so that it is sane and reaches 0 at a "reasonable" distance 
-  dist_rast =
-    exp(1)^(-((terra::distance(susc_tmp, vect(curr_year_outbrks), rasterize=T)^(2/3))/2e3))
-  print(dist_rast)
+  susd_tmp = popd_maxadjust * normalize_rast(
+    if(length(susd) == 0) ad1300_popd_rast else susd[[prev_idx]]
+  )
+  
+  #the distance component of r_t. exponential decay based on (scaled) distance. scaled, tapered, and
+  #clamped so that it is sane and reaches 0 at a "reasonable" distance.
+  #the 10 is so that the values e is raised to are between 0 and 10 (fractional exponents are weird)
+  dist_rast = exp(1)^(-10 * normalize_rast(
+    dist_coefficient*terra::distance(susc_tmp, vect(curr_year_outbrks))^dist_smoothing
+  ))
+  
+  dist_rast[dist_rast < distance_threshold] = 0
+  plot(susd_tmp, main=paste('susd', year))
   #the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
+  #this represents the scaling of the infectiousness over distance.
   infn_raster = (dist_rast * r0)
-  #plot(infn_raster)
+  plot(infn_raster, main=paste('infn_rast', year))
   
   #the estimate of the infected. should i use terra::predict, or...?
-  #simple model. density is exponential, which is good for us
-  infected[[curr_idx]] = susd_tmp * infn_raster * 36.5
+  infected[[curr_idx]] = floor(susd_tmp * infn_raster) #going to rework this into proper SIR
   #and, the other values associated:
   susceptible[[curr_idx]] = susc_tmp - infected[[curr_idx]] #even if survived, cant be reinfected
   dead[[curr_idx]] = mortality * infected[[curr_idx]]
   recovered = infected[[curr_idx]] - dead[[curr_idx]] #R,D not really used, but hey. good 2 know
   
   #we musn't forget to also adjust the susceptible population density
-  susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]]) 
+  susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]])
+  plot(susd[[curr_idx]], main=paste('susc. dens.', year)) #why is it always the same?
   
   maps[[curr_idx]] = 
     tm_shape(basemap) +
@@ -300,6 +327,7 @@ for (year in recorded_years) {
       tm_raster(title='Estimated Infected',
                 legend.show=T,
                 breaks=c(0,
+                         1,
                          50,
                          100,
                          200,
