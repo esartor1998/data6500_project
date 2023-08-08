@@ -14,7 +14,7 @@ nocite: '@*'
 
 The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @jedwab_pandemics_2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @evans_pneumonic_2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @world_health_organization_plague_nodate. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @noauthor_plague_nodate, with death following shortly thereafter @pechous_pneumonic_2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. While it is more treatable than pneumonic plague, in the Middle Ages, as no treatment was known for any form of the disease, it shared pneumonic plague's certain mortality. 
 The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @world_health_organization_plague_nodate. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @hufthammer_rats_2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas @dean_human_2018.
-The recent digitization of a substantial volume of plague records @buntgen_digitizing_2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @klein_goldewijk_anthropogenic_2017 allow for myriad novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease various communities and environments can help to provide historical context for events and developments in the Middle Ages.
+The recent digitization of a substantial volume of plague records @buntgen_digitizing_2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @klein_goldewijk_anthropogenic_2017 allow for myriad novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease various communities and s can help to provide historical context for events and developments in the Middle Ages.
 
 ### Data Sources
 
@@ -264,6 +264,7 @@ mortality   = 0.8
 
 params = crossing(d_smoothing, d_coeff, worst_case)
 iter=0
+susc_maps = list()
 
 for (trial in split(params, seq(nrow(params)))) {
   iter = iter + 1
@@ -271,10 +272,8 @@ for (trial in split(params, seq(nrow(params)))) {
   infected = list()
   recovered = list()
   dead = list()
-  
   susd = list()
   maps = list()
-  susc_maps = list()
   for (year in recorded_years) {
     curr_idx = year2idx(year) #NOT: not the idx in targ_years, just iter#
     prev_idx = curr_idx - 1
@@ -325,7 +324,7 @@ for (trial in split(params, seq(nrow(params)))) {
                            12000.0,
                            24000.0,
                            48000.0),
-                           title=paste('Model',iter,'1400AD Pop. Count'),legend.show=T)
+                           title=paste('Model',iter,'1400AD Susceptible Count'),legend.show=T)
     }
   }
   print(trial)
@@ -355,6 +354,28 @@ for (i in 1:length(susc_maps)) {
 #                      48000.0),
 #                      title='HYDE 3.2 1400AD Pop. Count',legend.show=T)
 
+```
+
+
+
+```{r lawl}
+
+tm_shape(basemap) +
+ tm_rgb(alpha=0.8) +
+ tm_shape(ad1400_popc_rast, raster.downsample=F) +
+ tm_raster(alpha=0.7, 
+           breaks=c(0.0,
+                    100.0,
+                    200.0,
+                    400.0,
+                    800.0,
+                    1600.0,
+                    3200.0,
+                    6400.0,
+                    12000.0,
+                    24000.0,
+                    48000.0),
+                    title='HYDE 3.2 1400AD Pop. Count',legend.show=T)
 ```
 
 
