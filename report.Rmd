@@ -265,7 +265,7 @@ mortality   = 0.8
 params = crossing(d_smoothing, d_coeff, worst_case)
 iter=0
 susc_maps = list()
-final_susc = list()
+final_dead = list()
 for (trial in split(params, seq(nrow(params)))) {
   iter = iter + 1
   susceptible = list()
@@ -308,7 +308,7 @@ for (trial in split(params, seq(nrow(params)))) {
     susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]])
     #plot(susd[[curr_idx]], main=paste('susc. dens.', year)) #why is it always the same?
     if(year == 1400) {
-      final_susc[[iter]] = susceptible[[curr_idx]]
+      final_dead[[iter]] = terra::app(rast(dead), sum)
       susc_maps[[iter]] = 
         tm_shape(basemap) +
         tm_rgb(alpha=0.8) +
@@ -332,14 +332,14 @@ for (trial in split(params, seq(nrow(params)))) {
   print(paste('trial',iter,'complete'))
 }
 
-for (i in 1:length(susc_maps)) {
-  plot(terra::values(final_susc[[i]]) ~ terra::values(ad1400_popc_rast))
-  abline(lm(terra::values(final_susc[[i]]) ~ terra::values(ad1400_popc_rast)))
+for (i in 1:length(final_dead)) {
+  plot(terra::values(final_dead[[i]]) ~ terra::values(ad1400_popc_rast))
+  abline(lm(terra::values(final_dead[[i]]) ~ terra::values(ad1400_popc_rast)))
   legend("topleft", legend=paste('Model', i,
                                  'Correlation =', round(cor(terra::values(ad1400_popc_rast),
-                                                            terra::values(final_susc[[i]]), 
+                                                            terra::values(final_dead[[i]]), 
                                                             use="complete.obs"), 2)))
-  print(susc_maps[[i]])
+  print(final_dead[[i]])
 }
 
 # print(susc_maps[[year2idx(1400)]])
