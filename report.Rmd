@@ -243,29 +243,25 @@ year2idx = function(year) {
   return(which(recorded_years == year))
 } #convenience function for converting a year number to its results-index
 
-
-target_years = all_target_years[which(all_target_years$year > 1345 & all_target_years$year <= 1400),]
+target_years = all_target_years[which(all_target_years$year > 1345 &
+                                      all_target_years$year <= 1400),]
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
-#extremely rough, 'death guesstimation' model:
-#d_smoothing affects the size of the region extremely close to 1.0 in distance raster
-#d_coeff     affects the size of the overall region above d_threshold in distance raster
-#d_threshold is the value at which we would like to round to 0, to prevent global infection
-d_smoothing = seq(0.30, 0.70, by=0.2)
-d_coeff =     seq(4, 8, by=2)
-#d_threshold will not be tested, as it's just to ensure sensible results
-#estimated maximum yearly saturation % of infection among susceptible:
-worst_case =  seq(0.2, 0.8, by=0.3)
+d_smoothing = seq(0.40, 0.80, by=0.2) #size of the region extremely close to 1.0 in distance raster
+d_coeff =     seq(6, 10, by=2) #size of the overall region above d_threshold in distance raster
+
+worst_case =  seq(0.5, 0.9, by=0.2) #estimated maximum yearly saturation % of infection among S
+mortality   = seq(0.4, 0.8, by=0.2) #estimated average mortality over all forms contracted
 
 #non-tunable params
-d_threshold = 0.01
-mortality   = 0.8
+d_threshold = 0.01 #value at which we would like to round to 0, to prevent global infection
 
-params = crossing(d_smoothing, d_coeff, worst_case)
+params = crossing(d_smoothing, d_coeff, worst_case, mortality)
 iter=0
 susc_maps = list()
 final_dead = list()
+correlations = list()
 for (trial in split(params, seq(nrow(params)))) {
   iter = iter + 1
   susceptible = list()
@@ -281,21 +277,22 @@ for (trial in split(params, seq(nrow(params)))) {
     prev_years_outbrks = target_years[which(target_years$year <= year),]
     curr_year_outbrks = target_years[which(target_years$year == year),]
   
+    #the variable we will use to hold this year's susceptible population estimate raster
     susc_tmp = if(length(susceptible) == 0) ad1300_popc_rast else susceptible[[prev_idx]]
     
+    #the variable we will use to hold this year's S population density estimate raster
     susd_tmp = normalize_rast(
       if(length(susd) == 0) ad1300_popd_rast else susd[[prev_idx]]
     )
   
+    #the raster used to scale distance from an outbreak
     dist_rast = exp(1)^(-3 * normalize_rast(
       trial$d_coeff*terra::distance(susc_tmp, vect(curr_year_outbrks), rasterize=T)^trial$d_smoothing
     ))
     dist_rast[dist_rast < d_threshold] = 0
-    #plot(dist_rast, main=paste('dist_rast', year))
     
     #the "infectiousness raster" we can use as a term in our estimate of the number of dead/infected
     infn_rast = trial$worst_case * dist_rast * susd_tmp
-    #plot(infn_rast, main=paste('infn_rast', year))
     
     #the estimate of the infected. should i use terra::predict, or...?
     infected[[curr_idx]] = floor(infn_rast * susc_tmp)
@@ -306,82 +303,60 @@ for (trial in split(params, seq(nrow(params)))) {
     
     #we musn't forget to also adjust the susceptible population density
     susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]])
-    #plot(susd[[curr_idx]], main=paste('susc. dens.', year)) #why is it always the same?
-    if(year == 1400) {
-      final_dead[[iter]] = terra::app(rast(dead), sum)
-      susc_maps[[iter]] = 
-        tm_shape(basemap) +
-        tm_rgb(alpha=0.8) +
-        tm_shape(susceptible[[curr_idx]], raster.downsample=F) +
-        tm_raster(alpha=0.7, 
-                  breaks=c(0.0,
-                           100.0,
-                           200.0,
-                           400.0,
-                           800.0,
-                           1600.0,
-                           3200.0,
-                           6400.0,
-                           12000.0,
-                           24000.0,
-                           48000.0),
-                           title=paste('Model',iter,'1400AD Susceptible Count'),legend.show=T)
-    }
   }
-  print(trial)
+  final_dead[[iter]] = terra::app(rast(dead), sum)
+  
+  correlations[[iter]] = cor(terra::values(ad1400_popc_rast),
+                    terra::values(final_dead[[iter]]), 
+                    use="complete.obs")
+  plot(terra::values(final_dead[[iter]]) ~ terra::values(ad1400_popc_rast))
+  abline(lm(terra::values(final_dead[[iter]]) ~ terra::values(ad1400_popc_rast)))
+  legend("topleft", legend=paste('Model', iter,
+                                 'Correlation =', round(correlations[[iter]], 2)))
   print(paste('trial',iter,'complete'))
 }
 
-for (i in 1:length(final_dead)) {
-  plot(terra::values(final_dead[[i]]) ~ terra::values(ad1400_popc_rast))
-  abline(lm(terra::values(final_dead[[i]]) ~ terra::values(ad1400_popc_rast)))
-  legend("topleft", legend=paste('Model', i,
-                                 'Correlation =', round(cor(terra::values(ad1400_popc_rast),
-                                                            terra::values(final_dead[[i]]), 
-                                                            use="complete.obs"), 2)))
-  print(final_dead[[i]])
-}
-
-# print(susc_maps[[year2idx(1400)]])
-# 
-# tm_shape(basemap) +
-#   tm_rgb(alpha=0.8) +
-#   tm_shape(ad1400_popc_rast, raster.downsample=F) +
-#   tm_raster(alpha=0.7, 
-#             breaks=c(0.0,
-#                      100.0,
-#                      200.0,
-#                      400.0,
-#                      800.0,
-#                      1600.0,
-#                      3200.0,
-#                      6400.0,
-#                      12000.0,
-#                      24000.0,
-#                      48000.0),
-#                      title='HYDE 3.2 1400AD Pop. Count',legend.show=T)
-
+tm_shape(basemap) +
+  tm_rgb(alpha=0.8) +
+  tm_shape(final_dead[[which.max(correlations)]], raster.downsample=F) +
+  tm_raster(alpha=0.7, 
+            breaks=c(0.0,
+                     100.0,
+                     200.0,
+                     400.0,
+                     800.0,
+                     1600.0,
+                     3200.0,
+                     6400.0,
+                     12000.0,
+                     24000.0,
+                     48000.0),
+                     title=paste('Model',which.max(correlations),'Cumulative Dead'),legend.show=T)
 ```
 
 
 
 ```{r lawl}
-tm_shape(basemap) +
- tm_rgb(alpha=0.8) +
- tm_shape(ad1400_popc_rast, raster.downsample=F) +
- tm_raster(alpha=0.7, 
-           breaks=c(0.0,
-                    100.0,
-                    200.0,
-                    400.0,
-                    800.0,
-                    1600.0,
-                    3200.0,
-                    6400.0,
-                    12000.0,
-                    24000.0,
-                    48000.0),
-                    title='HYDE 3.2 1400AD Pop. Count',legend.show=T)
+tm_shape(basemap) + tm_rgb() + tm_shape(death_raster, raster.downsample=FALSE) + tm_raster(alpha=0.7,
+                                                                  breaks=c(-51200.0
+                                                                          -25600.0,
+                                                                          -12800.0,
+                                                                          -6400.0,
+                                                                          -3200.0,
+                                                                          -1600.0,
+                                                                          -800.0,
+                                                                          -400.0,
+                                                                          -200.0,
+                                                                          -100.0,
+                                                                            0.0,
+                                                                           100.0,
+                                                                           200.0,
+                                                                           400.0,
+                                                                           800.0,
+                                                                           1600.0)) +
+        tm_shape(maritime_routes_sf) + tm_lines(col='dodgerblue', alpha=0.5) +
+        tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
+        tm_layout(legend.position=c("left", "top"), frame=FALSE, legend.bg.alpha=0.6, main.title='Pop. Diff 1400AD-1300AD')
 ```
 
 
