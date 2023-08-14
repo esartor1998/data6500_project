@@ -12,21 +12,27 @@ nocite: '@*'
 
 ### Description of the Plague
 
-The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @jedwab_pandemics_2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @evans_pneumonic_2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @world_health_organization_plague_nodate. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @noauthor_plague_nodate, with death following shortly thereafter @pechous_pneumonic_2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. While it is more treatable than pneumonic plague, in the Middle Ages, as no treatment was known for any form of the disease, it shared pneumonic plague's certain mortality. 
-The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @world_health_organization_plague_nodate. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @hufthammer_rats_2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas @dean_human_2018. NOTE: another paper can be cited here where good results are found w/human ecto
-The recent digitization of a substantial volume of plague records @buntgen_digitizing_2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @klein_goldewijk_anthropogenic_2017 allow for myriad novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease throughout various regions of Europe can help to provide historical context for events and developments in the region throughout the Middle Ages. Furthermore, given the severity and gruesome nature of the disease, modelling its spread through and impact upon Medieval Europe may prove a sobering reminder of the potential severity of an incurable epidemic. 
+notes: please change the simulation back to normal when done
+
+The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @Jedwab.etalPandemicsPlacesPopulations2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @EvansPneumonicPlagueIncidence2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @WorldHealthOrganizationPlague. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @A.D.A.M.Inc.Plague, with death following shortly thereafter @Pechous.etalPneumonicPlagueDarker2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. 
+
+While it is more treatable than pneumonic plague, in the Middle Ages, as no treatment was known for any form of the disease, it shared pneumonic plague's certain mortality. 
+The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @WorldHealthOrganizationPlague. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @Hufthammer.WalloeRatsCannotHave2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas @Dean.etalHumanEctoparasitesSpread2018 @Sichone.etalEstimatingBasicReproduction2020
+
+The recent digitization of a substantial volume of plague records @Buntgen.etalDigitizingHistoricalPlague2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @kleingoldewijkAnthropogenicLandUse2017 allow for myriad novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease throughout various regions of Europe can help to provide historical context for events and developments in the region throughout the Middle Ages. Furthermore, given the severity and gruesome nature of the disease, modelling its spread through and impact upon Medieval Europe may prove a sobering reminder of the potential severity of an incurable epidemic. 
 
 ### Data Sources
 
-* A digitized plague mentions dataset, including both mentions and well-known maritime trade routes @schmid_source_2015 compiled for the paper "Climate-driven introduction of the Black Death and successive plague reintroductions into Europe" @schmid_climate-driven_2015
-* HYDE 3.2 @klein_goldewijk_anthropogenic_2017, a monumental collection of rasters, encoding global environmental conditions and other information, including the most recent historical population and population density estimates currently available for pre-census speriods.
-* Approximate European borders shapefile for 1279 from a ThinkQuest educational web-site design competition held in 2000 @thinkquest_citation_post_rework. While this data is entirely student-created and may present minor inaccuracies, as it is used simply for the purposes of aiding in visualization, this is not a major concern.
+* A digitized plague mentions dataset, including both mentions and well-known maritime trade routes @schmidSourceCodeDatasets2015 compiled for the paper "Climate-driven introduction of the Black Death and successive plague reintroductions into Europe" @schmidClimatedrivenIntroductionBlack2015
+* HYDE 3.2 @kleingoldewijkAnthropogenicLandUse2017, a monumental collection of rasters, encoding global environmental conditions and other information, including the most recent historical population and population density estimates currently available for pre-census periods. The rasters are available in 100-year intervals during the period of interest, at a resolution of 85km$^2$.
+* Approximate European borders shapefile for 1279 from a ThinkQuest educational web-site design competition held in 2000 @ThinkQuestTeamC006628TeachingHistoryGIS2000. While this data is entirely student-created and may present minor inaccuracies, as it is used simply for the purposes of aiding in visualization, this is not a major concern.
+* Basemap tilesets for visualization by Apple, through `tmaptools` @tennekesTmaptoolsThematicMap2021
 
 ## Methods
 
 ### Preliminary Work Motivating the Model
 
-- the death raster,
+Unless otherwise specified, all analyses were performed using the R language @rcoreteamLanguageEnvironmentStatistical2023. Firstly, a raster containing the population difference between 1300AD and 1400AD was created. This raster is variously referred to in this report as the "death raster", or "population difference raster". It represents the loss or gain in population over the 14th century as estimated by the HYDE. In a normal century, it would be expected that the population would grow in most regions, but over the course of the 14th century there was significant population decrease in most regions. As a result, and given the general small magnitude of such positive numbersFocal correlation was assessed using the appropriate function through `terra`'s `focalPairs` function @hijmansTerraSpatialData2023.
 - the plague over death raster
 - the correlation between population density and deaths, and WHY its important/'_surprising_'
 
@@ -211,24 +217,50 @@ rm(json_lines)
 ```
 
 
-```{r test, echo=FALSE}
-tm_shape(basemap) +
-  tm_rgb(alpha=0.7) +
-  tm_shape(ad1300_popc_rast, raster.downsample = F) +
-  tm_raster(alpha=0.5, breaks=c(0.0,
-                                100.0,
-                                200.0,
-                                400.0,
-                                800.0,
-                                1600.0,
-                                3200.0,
-                                6400.0,
-                                12000.0,
-                                24000.0,
-                                48000.0),) +
-  tm_shape(all_target_years) +
-  tm_dots()
+```{r focal_correlation_between_deaths_and_popd}
+death_on_popd = rast(list(ad1300_popd_rast, death_raster))
+crs(death_on_popd) = unprojected_crs
+correlation = focalPairs(death_on_popd, w = 3, cor) #WARNING: this may crash if your libraries are not up-to-date!
+
+tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(correlation, raster.downsample=FALSE) +
+  tm_raster(alpha=0.7, palette="Spectral", title="") + 
+  tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
+  tm_layout(legend.position=c("left", "top"), frame=FALSE, 
+            legend.bg.alpha=0.6,
+            main.title="Focal Correlation Between\nDeaths and 1300AD Pop. Dens.")
 ```
+
+```{r predicted_intensity_through_rhohat}
+#first we gotta project the data. I'm choosing ED1950 Albers, as it covers the target area decently
+death_raster_proj = death_raster %>%
+                    terra::project(projected_crs)
+
+death_raster_im = death_raster_proj %>%
+                  raster() %>%
+                  as.im.RasterLayer()
+
+target_years_proj = all_target_years %>%
+                    st_transform(projected_crs)
+
+outbreak_ppp = target_years_proj %>%
+              dplyr::select(is_reoccurrence, year) %>%
+              mutate(year=factor(year)) %>%
+              mutate(is_reoccurance=factor(is_reoccurrence)) %>%
+              as.ppp()
+
+rh = rhohat(outbreak_ppp, death_raster_im)
+
+predrast = rast(predict(rh)*10e8) #many values are very small
+crs(predrast) = projected_crs
+tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(predrast, raster.downsample=FALSE) +
+                                        tm_raster(alpha=0.7,
+                                                  breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6), 
+                                                  palette = 'Spectral',
+                                                  title = 'Intensity') +
+  tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
+  tm_layout(legend.position = c('left', 'top'), main.title = '14th Century Predicted Intensity')
+```
+
 
 spatial autocorrelation in the fact that outbreaks are considered based on distance from the pixel, and that there is s.ac. in the density/count data
 
@@ -245,7 +277,7 @@ starting 1300, for each year:
 
 -need to programmatically run this multiple times, with multiple different parameters, to compare
 
-```{r run_simulations_1, echo=FALSE}
+```{r run_simulations, echo=FALSE, include=FALSE}
 #not using equal-area projections, so the scaling for raster cells is spatially warped:
 popc_cell_size = terra::cellSize(ad1300_popc_rast, unit='km')
 #cell size shouldn't change, so we only need to do this one time
@@ -274,11 +306,13 @@ first_year = recorded_years[1]
 
 d_smoothing = c(0.8)
               #seq(0.40, 0.80, by=0.2) #size of the region extremely close to 1.0 in distance raster
-d_coeff =     seq(6, 10, by=2) #size of the overall region above d_threshold in distance raster
+d_coeff =     c(8)
+              #seq(6, 10, by=2) #size of the overall region above d_threshold in distance raster
 
 worst_case =  c(0.9)
               #seq(0.5, 0.9, by=0.2) #estimated maximum yearly saturation % of infection among S
-mortality   = seq(0.4, 0.8, by=0.2) #estimated average mortality over all forms contracted
+mortality   = c(0.6)
+              #seq(0.4, 0.8, by=0.2) #estimated average mortality over all forms contracted
 
 #non-tunable params
 d_threshold = 0.01 #value at which we would like to round to 0, to prevent global infection
@@ -333,36 +367,24 @@ for (trial in split(params, seq(nrow(params)))) {
   final_dead[[iter]] = terra::app(rast(dead), sum)
   
   correlations[[iter]] = cor(terra::values(ad1400_popc_rast),
-                    terra::values(final_dead[[iter]]), 
-                    use="complete.obs")
-  plot(terra::values(final_dead[[iter]]) ~ terra::values(ad1400_popc_rast))
-  abline(lm(terra::values(final_dead[[iter]]) ~ terra::values(ad1400_popc_rast)))
-  legend("topleft", legend=paste('Model', iter,
-                                 'Correlation =', round(correlations[[iter]], 2)))
+                         terra::values(final_dead[[iter]]), 
+                         use="complete.obs")
+  
   print(paste('trial',iter,'complete'))
 }
+```
 
-tm_shape(basemap) +
-  tm_rgb(alpha=0.8) +
-  tm_shape(final_dead[[which.max(correlations)]], raster.downsample=F) +
-  tm_raster(alpha=0.7, 
-            breaks=c(0.0,
-                     100.0,
-                     200.0,
-                     400.0,
-                     800.0,
-                     1600.0,
-                     3200.0,
-                     6400.0,
-                     12000.0,
-                     24000.0,
-                     48000.0),
-                     title=paste('Model',which.max(correlations),'Cumulative Dead'),legend.show=T)
+```{r top_correlation_chart, echo=FALSE}
+most_corr_idx = which.max(correlations)
+
+plot(terra::values(final_dead[[most_corr_idx]]) ~ terra::values(ad1400_popc_rast))
+abline(lm(terra::values(final_dead[[most_corr_idx]]) ~ terra::values(ad1400_popc_rast)))
+legend("topleft", legend=paste('Model', most_corr_idx,
+                                 'Correlation =', round(correlations[[most_corr_idx]], 2)))
 ```
 
 
-
-```{r lawl}
+```{r map_comparions, echo=FALSE}
 tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsample=FALSE) + tm_raster(alpha=0.7,
                                                                   breaks=c(-51200.0
                                                                           -25600.0,
@@ -381,6 +403,23 @@ tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsamp
                                                                            800.0,
                                                                            1600.0)) +
         tm_layout(legend.position=c("left", "top"), frame=FALSE, legend.bg.alpha=0.6, main.title='Pop. Diff 1400AD-1300AD')
+
+tm_shape(basemap) +
+  tm_rgb(alpha=0.8) +
+  tm_shape(final_dead[[most_corr_idx]], raster.downsample=F) +
+  tm_raster(alpha=0.7, 
+            breaks=c(0.0,
+                     100.0,
+                     200.0,
+                     400.0,
+                     800.0,
+                     1600.0,
+                     3200.0,
+                     6400.0,
+                     12000.0,
+                     24000.0,
+                     48000.0),
+                     title=paste('Model',most_corr_idx,'Cumulative Dead'),legend.show=T)
 ```
 
 
