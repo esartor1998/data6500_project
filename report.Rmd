@@ -337,7 +337,7 @@ tm_shape(basemap) +
 
 
 ```{r lawl}
-tm_shape(basemap) + tm_rgb() + tm_shape(death_raster, raster.downsample=FALSE) + tm_raster(alpha=0.7,
+tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsample=FALSE) + tm_raster(alpha=0.7,
                                                                   breaks=c(-51200.0
                                                                           -25600.0,
                                                                           -12800.0,
@@ -354,8 +354,6 @@ tm_shape(basemap) + tm_rgb() + tm_shape(death_raster, raster.downsample=FALSE) +
                                                                            400.0,
                                                                            800.0,
                                                                            1600.0)) +
-        tm_shape(maritime_routes_sf) + tm_lines(col='dodgerblue', alpha=0.5) +
-        tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
         tm_layout(legend.position=c("left", "top"), frame=FALSE, legend.bg.alpha=0.6, main.title='Pop. Diff 1400AD-1300AD')
 ```
 
