@@ -23,6 +23,7 @@ NOTES: please change the simulation back to normal when done. also return the DO
 The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @WorldHealthOrganizationPlague. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @Hufthammer.WalloeRatsCannotHave2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas [@Dean.etalHumanEctoparasitesSpread2018; @Sichone.etalEstimatingBasicReproduction2020]
 
   The recent digitization of a substantial volume of plague records @Buntgen.etalDigitizingHistoricalPlague2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @kleingoldewijkAnthropogenicLandUse2017 allow for myriad novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease throughout various regions of Europe can help to provide historical context for events and developments in the region throughout the Middle Ages. Furthermore, given the severity and gruesome nature of the disease, modelling its spread through and impact upon Medieval Europe may prove a sobering reminder of the potential severity of an incurable epidemic. 
+  Therefore, the objective of this model is to attempt to model the yearly local impact of the Black Death throughout the whole of Europe, and in doing so to estimate crucial geographic characteristics of the epidemic. 
 
 ### Data Sources
 
@@ -205,9 +206,30 @@ rm(json_lines)
 Firstly, a raster containing the population difference between 1300AD and 1400AD was computed. This raster, visible in Figure (???), is variously referred to in this report as the "death raster", or "population difference raster". It represents the loss or gain in population count in each cell over the 14th century as estimated by the HYDE. One would normally expect wholesale population growth, but as a result of the devastation wrought by the Second Pandemic, the population difference raster is mostly negative, with population gain generally only in more remote regions. 
 As a result of this, and given the generally small magnitude of the population gain, a model purely estimating deaths rather than attempting to include population gain as well was used to massively simplify the required calculation.
 
-  Next, in order to assess sanity of the outbreak data, as well as its correlation with the HYDE estimates, Poisson point process methods were used to generate an intensity (points per unit area) estimate for the outbreak data as a function of the death raster. Specifically, the outbreak data preceding 1400AD was interpreted as a single Poisson point process, and a nonparametric intensity estimate was taken through `spatstat`'s `rhohat` function @baddeleySpatstatPackageAnalyzing2005. Then, a raster was computed depicting the predicted intensity at every cell in the death raster, resulting in Figure (???). This informed the usage of the outbreak data in general, providing confidence that it was correlated with deaths. Further, some authors cast doubt upon the usefulness of the Schmid et al data, stating that it may be missing key outbreaks in Europe, as the intensity of the points in Northern Italy in their opinion did not align with other historical accounts @roosenDangersNoncriticalUse2018. This analysis, however, finds a high intensity in the allegedly problematic regions, providing confidence that the usage of the outbreak data is not detrimental to the legitimacy of any results.
+  Next, in order to assess sanity of the outbreak data, as well as its correlation with the HYDE estimates, Poisson point process methods were used to generate an intensity (points per unit area) estimate for the outbreak data as a function of the death raster. Specifically, the outbreak data preceding 1400AD was interpreted as a single Poisson point process, and a nonparametric intensity estimate was taken through `spatstat`'s `rhohat` function @baddeleySpatstatPackageAnalyzing2005. Then, a raster was computed depicting the predicted intensity at every cell in the death raster, resulting in Figure (???). This informed the usage of the outbreak data in general, providing confidence that it was correlated with deaths. Further, some authors cast doubt upon the usefulness of the Schmid et al data, stating that it may be missing key outbreaks in Europe, as the intensity of the points in Northern Italy in their opinion did not align with other historical accounts @roosenDangersNoncriticalUse2018. This nonparametric analysis, however, finds a high intensity in the allegedly problematic regions, providing confidence that the usage of the outbreak data is not detrimental to the legitimacy of any results.
 
   Additionally, it is significant that the death raster is quite similar to the population density raster for the year 1300AD, as the population difference raster is generated only using population count data: this explicitly points to population density as a key factor in the relationship. In order to further assess the nature of the relationship between population density and population difference, focal correlation between the two rasters was assessed using the `focalPairs` function available through `terra` @hijmansTerraSpatialData2023, and is visible in Figure (???). While a negative correlation between population density and population growth was expceted, the positive correlation found in some regions indicates that difficult-to-model factors such as migration may be present. (SAY more about this?) 
+
+
+### Deterministic Model
+
+  The model seeks to simulate the yearly impact of the plague per cell in Europe between the years 1300AD and 1400AD, using grid search to tune its hyperparameters. It runs on each outbreak year chronologically, generating rasters for every year that at least one plague outbreak is recorded in historical sources (in practice, this is every year between 1346AD and 1400AD). To assess how successful it has been in its estimation, it compares the final values it arrives at for the living population of Europe in 1400AD with those from the HYDE estimate for that year, as well as the sum of all yearly death estimates it has made with the population difference raster. It generates Pearson correlation coefficient values between its estimates and those made by the far more sophisticated HYDE, and chooses the set of hyperparameters which result in the greatest correlation.
+  While technically a recursive algorithm, it is not implemented as such in order to save resources during processing. All generated rasters are identical in dimension to the population density and count rasters obtained through the HYDE, and no downscaling is performed. Additionally, all calculations are performed on unprojected data, as `terra`'s `distance` function is significantly more accurate with unprojected data than on projected data. 
+
+  Firstly, the outbreak points for ${year}$ are taken, and a raster $dist_{rast}$ is computed where the value of each pixel is inversely proportional to their distance from the closest outbreak according to $h = \exp({-m\norm{(ad^{x}})})$, where $d$ is the closest distance to an outbreak point returned for each pixel by `terra`'s `distance` function. $m$ $a$ and $x$ are scaling parameters for which various values are tested: $m$ scales the largest negative value that $e$ can be raised to, $a$ increases the area underneath the curve close to the $y$ axis by "lifting" the graph upwards, and $x$ disproportionately increases the value returned for pixels extremely close to the closest outbreak point. Effectively, $m$ and $a$ scale the overall range of an outbreak's effect, while $x$ scales the distance where the outbreak will be the most devastating. The $\norm{}$ function represents the uniform scaling, or normalization, of the raster's cell values to between 0.0 and 1.0, and is defined by $\frac{x - \min{(x)}}{\max{(x)} - min{(x)}}$.
+
+  Before describing how the estimated infected population raster is calculated, it is imperative to define several other rasters as well. The susceptible population density raster, $dens_{rast}$, wherein each cell's value represents the density of susceptible individuals within any given cell. The initial value of $dens_{rast}$ is the population density in 1300AD. The susceptible population _density_ raster is recalculated each year based upon $S_{rast}$, the susceptible population _count_ raster. The initial value of this raster is the population count in 1300AD.
+
+  Next, the infected population estimate raster $I$ is calculated, by $s(dens_{rast})(dist_{rast})$. The density and distance rasters are multiplied together, cell-by-cell, as well as by a normalized scalar parameter, $s$, representing the maximal yearly saturation percentage within susceptible individuals; this value is tested multiple times between 0.0 and 1.0. $s$ exists as according to current scholarship, even the cities hit most severely with plague only lost at most 50-80% of their populations [@CohnEpidemiologyBlackDeath2008; @DorseyArmstrongHowPolandMilan2021; @Cesana.etalOriginEarlySpread2017; @Roosen.CurtisLightTouchBlack2019; @Jedwab.etalPandemicsPlacesPopulations2019]. While it may be intuitive, it still must be noted that $I$ is instantaneous, and does not represent cumulative infections, only the number of infections in the outbreak year currently being analysed.
+It is also crucial to note that $dens_{rast}$ is not normalized, thus cells with a high density of susceptible individuals will be struck most severely with plague. However, because the susceptible population density is adjusted each iteration, this is seen most acutely when the area experiences its first outbreak. Additionally of note is that the value of $dist_{rast}$ approaches 0 at an exponential rate with distance to a recorded outbreak, allowing the progression of the disease to roughly follow the point pattern present in the outbreaks dataset, and for the countryside to be less severely affected than denser, more urban areas where outbreaks are typically recorded.
+
+  The final step each iteration is to adjust each population, as well as the population density, before recursing. This series of steps is more complex than it may at first seem, and is thus broken into several paragraphs to ease reading. Firstly, $I$ is subtracted from $S$, as a person cannot be reinfected with any form of the plague, either because they have died, or because they have become immune to all forms after surviving an infection. 
+  
+  Following this, the newly modified $S$ is utilized to create a new $dens_{rast}$ for the next iteration. However, this is not straightforward: even though the data is unprojected, the ellipsoid indexed by the longitude and latitude coordinates is not perfectly spherical and is instead flatter about the poles. Thus, some cells represent a larger actual area than others, and the true geographic area represented needs to be determined so that the population density is not skewed positively towards flattened areas. Luckily, `terra`'s `cellSize` is a quick and effective way to obtain the true geographic size of a raster cell, provided that it is sufficiently small. However, this alone still does not perfectly convert population to population density, as the HYDE uses other sources in addition to population count to gauge population density. As a result, we also need to offset each population count-to-density conversion by the difference between 1300AD population density calculated using only 1300AD population count, and the 1300AD HYDE estimate for population density. Put mathematically, the offset raster is calculated through $b = \frac{count_0}{size_0} - dens_0$, where $count_0$ is the population count raster in 1300AD, $size_0$ represents the raster of cell sizes obtained with `terra` for all cells in that raster, and $dens_0$ represents the population density estimate for 1300AD. This offset raster only needs to be evaluated one time, for the year 1300AD, as it acts as a global adjustment to each subsequent year's $dens_{rast}$ values. Further, the function used to convert population count to population density could be expressed as $\frac{count}{size}-b$, where $count$ is the population count raster, $size$ is the calculated raster containing $counts$ cell sizes, and $b$ is the previously-calculated offset.
+  
+  With all this complete, $I$ is multiplied by $mortality$ in order to approximate the number of those infected who will die; for this simulation, the scalar value $0.8 = mortality$ is used. This 80% mortality rate is based upon various estimates of the average contemporary mortality across all forms of the disease [@Pechous.etalPneumonicPlagueDarker2016; @EvansPneumonicPlagueIncidence2022; @Dean.etalHumanEctoparasitesSpread2018; @TotaroSufferingParadiseBubonic2005; @CohnEpidemiologyBlackDeath2008]. $mortality$ was initially tested with multiple values, but as it seemed have very little impact upon the result, and greatly expanded the search space, it was instead set to a scalar value to save computation time. In any case, the resulting raster, $D$, represents only the dead individuals from the outbreak year currently being analysed, _not_ the cumulative number of deaths over the entire epidemic, as it is based on the instantaneous $I$. All yearly $D$ rasters must be summed at the end of recursion in order to compute a total estimate. $R$, or the raster of recovered individuals for the year, is also calculated by $I - D$.
+
+  The algorithm is run until final year is reached. Then, all rasters $D$ and $R$ are summed respectively to $D_{total}$ and $R_{total}$, estimates for the total number of deaths and recoveries per cell over the entire 14th century. The correlation between these approximations and the values estimated in the HYDE are also computed. In the case of the estimated death number, correlation is measured against the inversely-signed population difference raster, as deaths in that raster are represented by a negative number, but this model can only produce positive numbers. The correlation between the final population estimate raster $A$, which is computed by $A = S_{final} + R_{total}$, and the population count in 1400AD is also tracked. The grid search is run to completion, with all unique combinations of the $m$, $a$, $x$, and $s$ parameters, and the most correlated models are selected and displayed, visible in Figure (???), and in Figure (???).
 
 
 ```{r death_raster, echo=FALSE}
@@ -237,6 +259,13 @@ tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsamp
 ```
 
 
+## Results
+
+### Preliminary Work Results
+
+  While the resultant model itself is the key focus of this report, the preliminary work also yielded some interesting results worthy of discussion. The focal correlation plot generated for Figure (???) is primarily reassuring due to the large swathe of reasssuringly negatively correlated space, however the areas which are positively correlated are also interesting and point to additional conclusions that can be gleaned from the data. Major cities of such as Paris, Berlin, and Vienna are counterintuitively strongly _positively_ correlated with population difference. In other words: despite being dense urban areas, they seemed to experience relative growth in contrast to other major cities of the time which were strongly negatively correlated, like London, Munich, or Milan. This could point to a pattern of migration into urban areas from less-affected rural communities as a result of the severe and abrupt population shock [@DorseyArmstrongHowPolandMilan2021; @Siuda.SundeDiseaseDemographicDevelopment2021; @Jedwab.etalPandemicsPlacesPopulations2019]. This phenomenon is of immense interest to anthropologists, especially those interested in human movement and the dramatic societal and cultural shifts that manifested in the regions where this positive correlation is present shortly after the most devastating years of plague had passed @A.D.A.M.Inc.Plague. Unfortunately, the model utilized in this paper is not robust enough to make predictions about this phenomenon, though it presents a promising avenue for future work. 
+
+
 ```{r focal_correlation_between_deaths_and_popd, echo=FALSE}
 death_on_popd = rast(list(ad1300_popd_rast, death_raster))
 crs(death_on_popd) = unprojected_crs
@@ -251,6 +280,9 @@ tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(correlation, raster.downsample=
             legend.outside=TRUE,
             main.title="Focal Correlation Between\nDeaths and 1300AD Pop. Dens.")
 ```
+
+
+  The nonparametric estimate of intensity as a function of population density also proved surprisingly validating.
 
 
 ```{r predicted_intensity_through_rhohat, echo=FALSE}
@@ -288,25 +320,6 @@ tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(predrast, raster.downsample=FAL
 ```
 
 
-### Deterministic Model
-
-  The model is run on each outbreak year chronologically. While technically a recursive algorithm, it is not implemented as such in order to save resources during processing. All generated rasters are identical in dimension to the population density and count rasters obtained through the HYDE, and no downscaling is performed. Additionally, all calculations are performed on unprojected data, as `terra`'s `distance` function is significantly more accurate with unprojected data than on projected data. The $\norm{}$ function represents the uniform scaling, or normalization, of a value to between 0.0 and 1.0, and is defined by $\frac{x - \min{(x)}}{\max{(x)} - min{(x)}}$.
-
-  Firstly, the outbreak points for ${year}$ are taken, and a raster $dist_{rast}$ is computed where the value of each pixel is inversely proportional to their distance from the closest outbreak according to $h = \exp({-m\norm{(ad^{x}})})$, where $d$ is the closest distance to an outbreak point returned for each pixel by `terra`'s `distance` function. $m$ $a$ and $x$ are scaling parameters for which various values are tested: $m$ scales the largest negative value that $e$ can be raised to, $a$ increases the area underneath the curve close to the $y$ axis by "lifting" the graph upwards, and $x$ disproportionately increases the value returned for pixels extremely close to the closest outbreak point. Effectively, $m$ and $a$ scale the overall range of an outbreak's effect, while $x$ scales the distance where the outbreak will be the most devastating.
-
-  Before describing how the estimated infected population raster is calculated, it is imperative to define several other rasters as well. The susceptible population density raster, $dens_{rast}$, wherein each cell's value represents the density of susceptible individuals within any given cell. The initial value of $dens_{rast}$ is the population density in 1300AD. The susceptible population _density_ raster is recalculated each year based upon $S_{rast}$, the susceptible population _count_ raster. The initial value of this raster is the population count in 1300AD.
-
-  Next, the infected population estimate raster $I$ is calculated, by $s(dens_{rast})(dist_{rast})$. The density and distance rasters are multiplied together, cell-by-cell, as well as by a normalized scalar parameter, $s$, representing the maximal yearly saturation percentage within susceptible individuals; this value is tested multiple times between 0.0 and 1.0. $s$ exists as according to current scholarship, even the cities hit most severely with plague only lost at most 50-80% of their populations [@CohnEpidemiologyBlackDeath2008; @DorseyArmstrongHowPolandMilan2021; @Cesana.etalOriginEarlySpread2017; @Roosen.CurtisLightTouchBlack2019; @Jedwab.etalPandemicsPlacesPopulations2019].
-It is crucial to note that $dens_{rast}$ is not normalized, thus cells with a high density of susceptible individuals will be struck most severely with plague. However, because the susceptible population density is adjusted each iteration, this is seen most acutely when the area experiences its first outbreak. Additionally of note is that the value of $dist_{rast}$ approaches 0 at an exponential rate with distance to a recorded outbreak, allowing the progression of the disease to roughly follow the point pattern present in the outbreaks dataset, and for the countryside to be less severely affected than denser, more urban areas where outbreaks are typically recorded.
-
-  The final step each iteration is to adjust each population, as well as the population density, before recursing. This series of steps is more complex than it may at first seem, and is thus broken into several paragraphs to ease reading. Firstly, $I$ is subtracted from $S$, as a person cannot be reinfected with any form of the plague, either because they have died, or because they have become immune to all forms after surviving an infection. 
-  
-  Following this, the newly modified $S$ is utilized to create a new $dens_{rast}$ for the next iteration. However, this is not straightforward: even though the data is unprojected, the ellipsoid indexed by the longitude and latitude coordinates is not perfectly spherical and is instead flatter about the poles. Thus, some cells represent a larger actual area than others, and the true geographic area represented needs to be calculated so that the population density is not skewed positively towards flattened areas. Luckily, `terra`'s `cellSize` is a quick and effective way to obtain the true geographic size of a raster cell, provided that it is sufficiently small. However, this alone still does not perfectly convert population to population density, as the HYDE uses other sources in addition to population count to gauge population density. As a result, we also need to offset each population count-to-density conversion by the difference between 1300AD population density calculated using only 1300AD population count, and the 1300AD HYDE estimate for population density. Put mathematically, the offset raster is calculated through $b = \frac{count_0}{size_0} - dens_0$, where $count_0$ is the population count raster in 1300AD, $size_0$ represents the raster of cell sizes obtained with `terra` for all cells in that raster, and $dens_0$ represents the population density estimate for 1300AD. This offset raster only needs to be calculated one time, before recursion has begun, as it acts as a global adjustment to the values calculated. Further, the function used to convert population count to population density could be expressed as $\frac{count}{size}-b$, where $count$ is the population count raster, $size$ is the calculated raster containing $counts$ cell sizes, and $b$ is the previously-calculated offset.
-  
-  With all this complete, $I$ is multiplied by $mortality$ in order to approximate the number of those infected who will die; for this simulation, a scalar $0.8 = mortality$. This 80% mortality rate approximation is based upon various estimates of the average contemporary mortality across all forms of the disease [@Pechous.etalPneumonicPlagueDarker2016; @EvansPneumonicPlagueIncidence2022; @Dean.etalHumanEctoparasitesSpread2018; @TotaroSufferingParadiseBubonic2005; @CohnEpidemiologyBlackDeath2008]. The resulting raster, $D$, represents only the dead individuals from the outbreak year currently analysed, not the cumulative number of deaths over the entire epidemic. All yearly $D$ rasters must be summed at the end of recursion in order to compute a total estimate.
-
-  The algorithm is run until final desired year is reached. At that point, the $D$ rasters are all summed together, generating an estimate for the total number of deaths per cell over the 14th century. The correlation between this approximation and the inverse of the death raster (as the values computed by the model are positive, while cumulative deaths are a negative number on the population difference raster) is also computed. The correlation between the final susceptible population estimate $S$ and the population count in 1400AD is also tracked. The model is then run several more times, with differing $m$, $a$, $x$, and $s$ parameters, and the most correlated models are selected and displayed, visible in Figure (???), and in Figure (???).
-
 ```{r run_simulations, echo=FALSE, include=FALSE}
 #scaling for raster cells is spatially warped:
 popc_cell_size = terra::cellSize(ad1300_popc_rast, unit='km')
@@ -334,15 +347,15 @@ target_years = all_target_years[which(all_target_years$year > 1345 &
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
-d_smoothing = c(0.2, 0.8)
+d_smoothing = c(0.2, 0.6, 0.8)
               #seq(0.20, 0.80, by=0.2) #size of the region extremely close to 1.0 in distance raster
-d_coeff =     c(2, 10)
+d_coeff =     c(2, 50)
               #seq(2, 10, by=2) #size of the overall region above d_threshold in distance raster
-d_max_range = c(3, 12)
+d_max_range = c(3, 6, 12)
 
 worst_case =  c(0.75, 0.9)
               #seq(0.3, 0.9, by=0.3) #estimated maximum yearly saturation % of infection among S
-mortality   = c(0.6, 0.8) #@TotaroSufferingParadiseBubonic2005
+mortality   = c(0.8) #@TotaroSufferingParadiseBubonic2005
               #seq(0.4, 0.8, by=0.2) #estimated average mortality over all forms contracted
 
 #non-tunable params
@@ -352,7 +365,9 @@ params = crossing(d_smoothing, d_coeff, d_max_range, worst_case, mortality)
 iter=0
 susc_maps = list()
 final_dead = list()
+final_alive = list()
 final_susc = list()
+correlations_A = list()
 correlations_D = list()
 correlations_P = list()
 for (trial in split(params, seq(nrow(params)))) {
@@ -391,14 +406,19 @@ for (trial in split(params, seq(nrow(params)))) {
     infected[[curr_idx]] = floor(infn_rast * susc_tmp)
     #and, the other values associated:
     susceptible[[curr_idx]] = susc_tmp - infected[[curr_idx]] #even if survived, cant be reinfected
+    #recovered, dead aren't cumulative like S is
     dead[[curr_idx]] = mortality * infected[[curr_idx]]
-    recovered = infected[[curr_idx]] - dead[[curr_idx]] #R,D not really used, but hey. good 2 know
+    recovered[[curr_idx]] = infected[[curr_idx]] - dead[[curr_idx]] 
     
     #we musn't forget to also adjust the susceptible population density
     susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]])
   }
   final_dead[[iter]] = terra::app(rast(dead), sum)
   final_susc[[iter]] = susceptible[[curr_idx]] #each element of S is a cum. tot., unlike D
+  final_alive[[iter]] = susceptible[[curr_idx]] + terra::app(rast(recovered), sum)
+  correlations_A[[iter]] = cor(terra::values(ad1400_popc_rast),
+                           terra::values(final_alive[[iter]]), 
+                           use="complete.obs")
   correlations_D[[iter]] = cor(terra::values(-death_raster),
                            terra::values(final_dead[[iter]]), 
                            use="complete.obs")
@@ -430,21 +450,21 @@ starting 1300, for each year:
 
 - d_coeff does not matter at all lawl
 
-```{r top_correlation_chart, echo=FALSE}
-cord2=list()
-for(i in 1:length(final_dead)) {
-  cord2[[i]] = cor(terra::values(-death_raster),
-                   terra::values(final_dead[[i]]), 
-                   use="complete.obs")
-}
 
-mc2 = which.max(cord2)
-plot(terra::values(final_dead[[mc2]]) ~ terra::values(-death_raster),
-     xlab = 'Actual Population Decrease',
-     ylab = 'Expected Population Decrease')
-abline(lm(terra::values(final_dead[[mc2]]) ~ terra::values(-death_raster)))
-legend("topleft", legend=paste0('Model #', mc2,
-                               ' Final Death Correlation = ', round(cord2[[mc2]], 2)))
+### Deterministic Model Results
+
+- note the implications behind the parameters which were successful, esp. that worst_case.
+- note that mortality wasnt really hugely influential, or at least not as influential as raising effectiveness over distance
+
+
+```{r top_correlation_chart, echo=FALSE}
+most_corr_idx_A = which.max(correlations_A)
+plot(terra::values(final_alive[[most_corr_idx_A]]) ~ terra::values(ad1400_popc_rast),
+     xlab = 'Actual Population',
+     ylab = 'Expected Population')
+abline(lm(terra::values(final_alive[[most_corr_idx_A]]) ~ terra::values(ad1400_popc_rast)))
+legend("topleft", legend=paste0('Model #', most_corr_idx_A,
+                               ' Final Alive Correlation = ', round(correlations_A[[most_corr_idx_A]], 2)))
 
 most_corr_idx_D = which.max(correlations_D)
 plot(terra::values(final_dead[[most_corr_idx_D]]) ~ terra::values(-death_raster),
@@ -460,14 +480,14 @@ plot(terra::values(final_susc[[most_corr_idx_P]]) ~ terra::values(ad1400_popc_ra
      ylab = 'Expected Final Population')
 abline(lm(terra::values(final_susc[[most_corr_idx_P]]) ~ terra::values(ad1400_popc_rast)))
 legend("topleft", legend=paste0('Model #', most_corr_idx_P,
-                               ' Final Pop. Correlation = ', round(correlations_P[[most_corr_idx_P]], 2)))
+                               ' Final S. Pop. Correlation = ', round(correlations_P[[most_corr_idx_P]], 2)))
 ```
 
 
 ```{r best_model_result, echo=FALSE}
 tm_shape(basemap) +
   tm_rgb(alpha=0.8) +
-  tm_shape(final_susc[[most_corr_idx_P]], raster.downsample=F) +
+  tm_shape(final_alive[[most_corr_idx_A]], raster.downsample=F) +
   tm_raster(alpha=0.7, 
             breaks=c(0.0,
                      100.0,
@@ -484,7 +504,7 @@ tm_shape(basemap) +
   tm_layout(legend.position=c('left', 'top'),
             frame=FALSE,
             legend.outside=TRUE,
-            main.title=paste0('Model #',most_corr_idx_P,' Predicted Population in 1400AD'))
+            main.title=paste0('Model #',most_corr_idx_A,' Predicted Population in 1400AD'))
 ```
 
 
@@ -492,16 +512,7 @@ $$
 e^{-{x^{\sqrt[2]{3}}}}
 $$
 
-## Results
 
-### Preliminary Work Results
-
-  While the resultant model itself is the key focus of this report, the preliminary work also yielded some interesting results worthy of discussion. The focal correlation plot generated for Figure (???) is primarily reassuring due to the large swathe of reasssuringly negatively correlated space, however the areas which are positively correlated are also interesting and point to additional conclusions that can be gleaned from the data. Major cities of such as Paris, Berlin, and Vienna are counterintuitively strongly _positively_ correlated with population difference. In other words: despite being dense urban areas, they seemed to experience relative growth in contrast to other major cities of the time which were strongly negatively correlated, like London, Munich, or Milan. This could point to a pattern of migration into urban areas from less-affected rural communities as a result of the severe and abrupt population shock [@DorseyArmstrongHowPolandMilan2021; @Siuda.SundeDiseaseDemographicDevelopment2021; @Jedwab.etalPandemicsPlacesPopulations2019]. This phenomenon is of immense interest to anthropologists, especially those interested in human movement and the dramatic societal and cultural shifts that manifested in the regions where this positive correlation is present shortly after the most devastating years of plague had passed @A.D.A.M.Inc.Plague. Unfortunately, the model utilized in this paper is not robust enough to make predictions about this phenomenon, though it presents a promising avenue for future work. 
-
-### Deterministic Model Results
-
-- note the implications behind the parameters which were successful, esp. that worst_case.
-- note that mortality wasnt really hugely influential, or at least not as influential as raising effectiveness over distance
 
 ## References
 
