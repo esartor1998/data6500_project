@@ -3,10 +3,12 @@ title: "Report"
 author: "Eric Sartor"
 date: "`r Sys.Date()`"
 header-includes:
+  - \usepackage[numbers,sort&compress]{natbib}
   - \DeclareMathOperator{\norm}{norm}
 output: pdf_document
 bibliography: bibliography.bib
 csl: ieee.csl
+link-citations: true
 ---
 
 ## Introduction
@@ -18,7 +20,7 @@ NOTES: please change the simulation back to normal when done. also return the DO
 The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @Jedwab.etalPandemicsPlacesPopulations2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @EvansPneumonicPlagueIncidence2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @WorldHealthOrganizationPlague. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @A.D.A.M.Inc.Plague, with death following shortly thereafter @Pechous.etalPneumonicPlagueDarker2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. 
 
 While it is more treatable than pneumonic plague, in the Middle Ages, as no treatment was known for any form of the disease, it shared pneumonic plague's certain mortality. 
-The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @WorldHealthOrganizationPlague. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @Hufthammer.WalloeRatsCannotHave2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas @Dean.etalHumanEctoparasitesSpread2018 @Sichone.etalEstimatingBasicReproduction2020
+The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @WorldHealthOrganizationPlague. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @Hufthammer.WalloeRatsCannotHave2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas [@Dean.etalHumanEctoparasitesSpread2018; @Sichone.etalEstimatingBasicReproduction2020]
 
 The recent digitization of a substantial volume of plague records @Buntgen.etalDigitizingHistoricalPlague2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @kleingoldewijkAnthropogenicLandUse2017 allow for myriad novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease throughout various regions of Europe can help to provide historical context for events and developments in the region throughout the Middle Ages. Furthermore, given the severity and gruesome nature of the disease, modelling its spread through and impact upon Medieval Europe may prove a sobering reminder of the potential severity of an incurable epidemic. 
 
@@ -45,12 +47,17 @@ Additionally, it is significant that the death raster is quite similar to the po
 
 The model is run on each outbreak year chronologically. While technically a recursive algorithm, it is not implemented as such in order to save resources during processing. All generated rasters are identical in dimension to the population density and count rasters obtained through the HYDE, and no downscaling is performed. Additionally, all calculations are performed on unprojected data, as `terra`'s `distance` function is significantly more accurate with unprojected data than on projected data. The $\norm{}$ function represents the uniform scaling, or normalization, of a value to between 0.0 and 1.0, and is defined by $\frac{x - \min{(x)}}{\max{(x)} - min{(x)}}$.
 
-Firstly, the outbreak points for ${year}$ are taken, and a raster $dist_{rast}$ is computed where the value of each pixel is inversely proportional to their distance from the closest outbreak according to $h = \exp({-m\norm{(ad^{\rho}})})$, where $d$ is the closest distance to an outbreak point returned for each pixel by `terra`'s `distance` function. $m$ $a$ and $x$ are scaling parameters for which various values are tested: $m$ scales the largest negative value that $e$ can be raised to, $a$ increases the area underneath the curve close to the $y$ axis by "lifting" the graph upwards, and $x$ disproportionately increases the value returned for pixels extremely close to the closest outbreak point. Effectively, $m$ and $a$ scale the overall range of an outbreak's effect, while $x$ scales the distance where the outbreak will be the most devastating.
+Firstly, the outbreak points for ${year}$ are taken, and a raster $dist_{rast}$ is computed where the value of each pixel is inversely proportional to their distance from the closest outbreak according to $h = \exp({-m\norm{(ad^{x}})})$, where $d$ is the closest distance to an outbreak point returned for each pixel by `terra`'s `distance` function. $m$ $a$ and $x$ are scaling parameters for which various values are tested: $m$ scales the largest negative value that $e$ can be raised to, $a$ increases the area underneath the curve close to the $y$ axis by "lifting" the graph upwards, and $x$ disproportionately increases the value returned for pixels extremely close to the closest outbreak point. Effectively, $m$ and $a$ scale the overall range of an outbreak's effect, while $x$ scales the distance where the outbreak will be the most devastating.
 
 Before describing how the estimated infected population raster is calculated, it is imperative to define several other rasters as well. The susceptible population density raster, $dens_{rast}$, wherein each cell's value represents the density of susceptible individuals within any given cell. The initial value of $dens_{rast}$ is the population density in 1300AD. The susceptible population _density_ raster is recalculated each year based upon $S_{rast}$, the susceptible population _count_ raster. The initial value of this raster is the population count in 1300AD.
 
-Next, the infected population estimate raster is calculated, by $s(dens_{rast})(dist_{rast})$. The density and distance rasters are multiplied together, cell-by-cell, as well as by a normalized scalar parameter, $s$, representing the maximal yearly saturation percentage within susceptible individuals; this value is tested multiple times between 0.0 and 1.0. $s$ exists as according to current scholarship, even the cities hit most severely with plague only lost at most 50-80% of their populations @DorseyArmstrongHowPolandMilan2021 @Cesana.etalOriginEarlySpread2017 @Roosen.CurtisLightTouchBlack2019 @Jedwab.etalPandemicsPlacesPopulations2019.
-It is crucial to note that $dens_{rast}$ is not normalized, thus areas with a high density of susceptible individuals will be struck most severely with plague. However, because the susceptible population density is adjusted each iteration, this is seen most acutely when the area experiences its first outbreak. Additionally of note is that the value of $dist_{rast}$ approaches 0 at an exponential rate with distance to a recorded outbreak, allowing the progression of the disease to roughly follow the point pattern present in the outbreaks dataset, and for the countryside to be less severely affected than denser, more urban areas where outbreaks are typically recorded.
+Next, the infected population estimate raster $I$ is calculated, by $s(dens_{rast})(dist_{rast})$. The density and distance rasters are multiplied together, cell-by-cell, as well as by a normalized scalar parameter, $s$, representing the maximal yearly saturation percentage within susceptible individuals; this value is tested multiple times between 0.0 and 1.0. $s$ exists as according to current scholarship, even the cities hit most severely with plague only lost at most 50-80% of their populations [@CohnEpidemiologyBlackDeath2008; @DorseyArmstrongHowPolandMilan2021; @Cesana.etalOriginEarlySpread2017; @Roosen.CurtisLightTouchBlack2019; @Jedwab.etalPandemicsPlacesPopulations2019].
+It is crucial to note that $dens_{rast}$ is not normalized, thus cells with a high density of susceptible individuals will be struck most severely with plague. However, because the susceptible population density is adjusted each iteration, this is seen most acutely when the area experiences its first outbreak. Additionally of note is that the value of $dist_{rast}$ approaches 0 at an exponential rate with distance to a recorded outbreak, allowing the progression of the disease to roughly follow the point pattern present in the outbreaks dataset, and for the countryside to be less severely affected than denser, more urban areas where outbreaks are typically recorded.
+
+The final step each iteration is to adjust each population, as well as the population density, before recursing. $I$ is subtracted from $S$, as a person cannot be reinfected with any form of the plague, either because they have died, or because they have become immune to all forms after surviving an infection. 
+Following this, the newly modified $S$ is utilized to create a new $dens_{rast}$ for the next iteration. However, this is not as straightforward as it seems: even though the data is unprojected, the ellipsoid indexed by the longitude and latitude coordinates is not a perfect sphere and is instead flatter at the poles. Thus, some cells  actually represent a larger geographic area than others, and the true geographic area represented needs to be calculated so that the population density is not skewed positively towards the poles. Luckily, `terra`'s `cellSize` is a quick and effective way to obtain the true geographic size of a raster cell, provided that it is sufficiently small. However, this alone still does not perfectly convert population to population density, as the HYDE uses other sources in addition to population count to estimate population density. As a result, we also need to offset by the initial difference between a population density calculated using only population count, and the HYDE estimate for population density. 
+With all this complete, $I$ is multiplied by $mortality$ in order to estimate the number of those infected who will die; for this simulation, a scalar $mortality = 0.8$—or 80%—was used. This is based upon various estimates of the average contemporary mortality rate across all forms of the disease [@Pechous.etalPneumonicPlagueDarker2016; @EvansPneumonicPlagueIncidence2022; @Dean.etalHumanEctoparasitesSpread2018; @TotaroSufferingParadiseBubonic2005; @CohnEpidemiologyBlackDeath2008]. The resulting raster, $D$, represents only the dead individuals from the outbreak year currently analysed, not the cumulative number of deaths over the entire epidemic. All yearly $D$ rasters must be summed at the end of recursion in order to compute a total estimate.
+Finally, recursion is then performed until the final desired year is reached.
 
 - describe the model's terms, the motivation behind each + each normaliz8n
 - describe the formula for the model
@@ -266,10 +273,10 @@ correlation = focalPairs(death_on_popd, w = 3, cor) #WARNING: this may crash if 
 tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(correlation, raster.downsample=FALSE) +
   tm_raster(alpha=0.7, palette="Spectral", title="") + 
   tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
-  tm_layout(legend.position=c("left", "top"), frame=FALSE, 
+  tm_layout(legend.position=c("left", "top"),
+            frame=FALSE, 
             legend.bg.alpha=0.6,
             legend.outside=TRUE,
-            frame=FALSE,
             main.title="Focal Correlation Between\nDeaths and 1300AD Pop. Dens.")
 ```
 
@@ -326,7 +333,7 @@ starting 1300, for each year:
 -need to programmatically run this multiple times, with multiple different parameters, to compare
 
 ```{r run_simulations, echo=FALSE, include=FALSE}
-#not using equal-area projections, so the scaling for raster cells is spatially warped:
+#scaling for raster cells is spatially warped:
 popc_cell_size = terra::cellSize(ad1300_popc_rast, unit='km')
 #cell size shouldn't change, so we only need to do this one time
 #additionally, wemust offset here, as the data used to obtain popd uses more sources than just popc
@@ -426,10 +433,12 @@ for (trial in split(params, seq(nrow(params)))) {
 ```{r top_correlation_chart, echo=FALSE}
 most_corr_idx = which.max(correlations)
 
-plot(terra::values(final_dead[[most_corr_idx]]) ~ terra::values(ad1400_popc_rast))
+plot(terra::values(final_dead[[most_corr_idx]]) ~ terra::values(ad1400_popc_rast),
+     xlab = 'Actual Population Decrease',
+     ylab = 'Expected Population Decrease')
 abline(lm(terra::values(final_dead[[most_corr_idx]]) ~ terra::values(ad1400_popc_rast)))
 legend("topleft", legend=paste('Model', most_corr_idx,
-                                 'Correlation =', round(correlations[[most_corr_idx]], 2)))
+                               'Correlation =', round(correlations[[most_corr_idx]], 2)))
 ```
 
 
@@ -449,7 +458,11 @@ tm_shape(basemap) +
                      12000.0,
                      24000.0,
                      48000.0),
-                     title=paste('Model',most_corr_idx,'Cumulative Dead'),legend.show=T)
+                     title="",legend.show=T) +
+  tm_layout(legend.position=c('left', 'top'),
+            frame=FALSE,
+            legend.outside=TRUE,
+            main.title=paste('Model',most_corr_idx,'Cumulative Dead'))
 ```
 
 
