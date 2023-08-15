@@ -229,10 +229,10 @@ It is also crucial to note that $dens_{rast}$ is not normalized, thus cells with
   
   With all this complete, $I$ is multiplied by $mortality$ in order to approximate the number of those infected who will die; for this simulation, the scalar value $0.8 = mortality$ is used. This 80% mortality rate is based upon various estimates of the average contemporary mortality across all forms of the disease [@Pechous.etalPneumonicPlagueDarker2016; @EvansPneumonicPlagueIncidence2022; @Dean.etalHumanEctoparasitesSpread2018; @TotaroSufferingParadiseBubonic2005; @CohnEpidemiologyBlackDeath2008]. $mortality$ was initially tested with multiple values, but as it seemed have very little impact upon the result, and greatly expanded the search space, it was instead set to a scalar value to save computation time. In any case, the resulting raster, $D$, represents only the dead individuals from the outbreak year currently being analysed, _not_ the cumulative number of deaths over the entire epidemic, as it is based on the instantaneous $I$. All yearly $D$ rasters must be summed at the end of recursion in order to compute a total estimate. $R$, or the raster of recovered individuals for the year, is also calculated by $I - D$.
 
-  The algorithm is run until final year is reached. Then, all rasters $D$ and $R$ are summed respectively to $D_{total}$ and $R_{total}$, estimates for the total number of deaths and recoveries per cell over the entire 14th century. The correlation between these approximations and the values estimated in the HYDE are also computed. In the case of the estimated death number, correlation is measured against the inversely-signed population difference raster, as deaths in that raster are represented by a negative number, but this model can only produce positive numbers. The correlation between the final population estimate raster $A$, which is computed by $A = S_{final} + R_{total}$, and the population count in 1400AD is also tracked. The grid search is run to completion, with all unique combinations of the $m$, $a$, $x$, and $s$ parameters, and the most correlated models are selected and displayed, visible in Figure (???), and in Figure (???).
+  The algorithm is run until final year is reached. Then, all rasters $D$ and $R$ are summed respectively to $D_{total}$ and $R_{total}$, estimates for the total number of deaths and recoveries per cell over the entire 14th century. The correlation between these approximations and the values estimated in the HYDE are also computed. In the case of the estimated death number, correlation is measured against the inversely-signed population difference raster, as deaths in that raster are represented by a negative number, but this model can only produce positive numbers. The correlation between the population count in 1400AD and the model's final population estimate raster $A$, which is computed by $A = S_{final} + R_{total}$, is also tracked. The grid search is run to completion, with all unique combinations of the $m$, $a$, $x$, and $s$ parameters, and the models correlation between expected and actual values for both deaths and population are selected and displayed, visible in Figure (???), and in Figure (???). The predicted 1400AD rasters for remaining population and deaths are Figure (???) and Figure (???), respectively, with the HYDE estimates side-by-side for comparison. Additionally, snapshots of key years of the epidemic as predicted in the best deaths model are also included in Figure (???).
 
 
-```{r death_raster, echo=FALSE}
+```{r death_raster, echo=FALSE, fig.cap="The Population Difference Raster, or \"Death Raster\""}
 tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsample=FALSE) + tm_raster(alpha=0.7,
                                                                   breaks=c(-51200.0
                                                                           -25600.0,
@@ -266,7 +266,7 @@ tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsamp
   While the resultant model itself is the key focus of this report, the preliminary work also yielded some interesting results worthy of discussion. The focal correlation plot generated for Figure (???) is primarily reassuring due to the large swathe of reasssuringly negatively correlated space, however the areas which are positively correlated are also interesting and point to additional conclusions that can be gleaned from the data. Major cities of such as Paris, Berlin, and Vienna are counterintuitively strongly _positively_ correlated with population difference. In other words: despite being dense urban areas, they seemed to experience relative growth in contrast to other major cities of the time which were strongly negatively correlated, like London, Munich, or Milan. This could point to a pattern of migration into urban areas from less-affected rural communities as a result of the severe and abrupt population shock [@DorseyArmstrongHowPolandMilan2021; @Siuda.SundeDiseaseDemographicDevelopment2021; @Jedwab.etalPandemicsPlacesPopulations2019]. This phenomenon is of immense interest to anthropologists, especially those interested in human movement and the dramatic societal and cultural shifts that manifested in the regions where this positive correlation is present shortly after the most devastating years of plague had passed @A.D.A.M.Inc.Plague. Unfortunately, the model utilized in this paper is not robust enough to make predictions about this phenomenon, though it presents a promising avenue for future work. 
 
 
-```{r focal_correlation_between_deaths_and_popd, echo=FALSE}
+```{r focal_correlation_between_deaths_and_popd, echo=FALSE, fig.cap='Pop. Dens. and Pop. Diff. Spatial Focal Correlation'}
 death_on_popd = rast(list(ad1300_popd_rast, death_raster))
 crs(death_on_popd) = unprojected_crs
 correlation = focalPairs(death_on_popd, w = 3, cor) #WARNING: this may crash if your libraries are not up-to-date!
@@ -282,10 +282,7 @@ tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(correlation, raster.downsample=
 ```
 
 
-  The nonparametric estimate of intensity as a function of population density also proved surprisingly validating.
-
-
-```{r predicted_intensity_through_rhohat, echo=FALSE}
+```{r predicted_intensity_through_rhohat, echo=FALSE, fig.cap='Nonparametric Estimate of Intensity as a Function of Pop. Dens.'}
 #first we gotta project the data. I'm choosing ED1950 Albers, as it covers the target area decently
 death_raster_proj = death_raster %>%
                     terra::project(projected_crs)
@@ -342,24 +339,24 @@ year2idx = function(year) {
   return(which(recorded_years == year))
 } #convenience function for converting a year number to its results-index
 
+
+#TUNEABLE PARAMETERS:
 target_years = all_target_years[which(all_target_years$year > 1345 &
                                       all_target_years$year <= 1400),]
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
-d_smoothing = c(0.2, 0.6, 0.8)
-              #seq(0.20, 0.80, by=0.2) #size of the region extremely close to 1.0 in distance raster
-d_coeff =     c(2, 50)
-              #seq(2, 10, by=2) #size of the overall region above d_threshold in distance raster
+d_smoothing = c(0.2, 0.6, 0.8) #size of the region extremely close to 1.0 in distance raster
+
+d_coeff =     c(2)#, 50) #adjusts the overall region above d_threshold in distance raster
+
 d_max_range = c(3, 6, 12)
 
-worst_case =  c(0.75, 0.9)
-              #seq(0.3, 0.9, by=0.3) #estimated maximum yearly saturation % of infection among S
-mortality   = c(0.8) #@TotaroSufferingParadiseBubonic2005
-              #seq(0.4, 0.8, by=0.2) #estimated average mortality over all forms contracted
+worst_case =  c(0.75, 0.9) #estimated maximum yearly saturation % of infection among S
 
-#non-tunable params
+#non-tuned params:
 d_threshold = 0.01 #value at which we would like to round to 0, to prevent global infection
+mortality   = c(0.8) #@TotaroSufferingParadiseBubonic2005
 
 params = crossing(d_smoothing, d_coeff, d_max_range, worst_case, mortality)
 iter=0
@@ -433,31 +430,30 @@ for (trial in split(params, seq(nrow(params)))) {
 
 spatial autocorrelation in the fact that outbreaks are considered based on distance from the pixel, and that there is s.ac. in the density/count data
 
-i *cannot* use linear population density scaling: *each cell's original size is warped by the ellipsoid*; as such, i need to obtain a per-pixel scaling value to convert pop to popd. luckily, terra has a "cellsize" function we can use to calculate
-
-
-starting 1300, for each year:
-- foreach pixel in population raster:
-  - scale/generate r0 using known r0, distance from outbreaks, popd, prev. r0 at that pixel
-  - apply this r0 and use fatality rate etc to gen. a new value at the px loc.
-    - also generate a new population density for the tile.
-
 - this does not account for migration in/out of cities as a result of population loss
 - areas of population growth not accounted for.
 - balkans not accurate at all for some reason; some other factor?
 
 - does not account for saturation of popd. as a proxy for contacts (heat equation in that papper)
 
-- d_coeff does not matter at all lawl
-
 
 ### Deterministic Model Results
 
+  Despite its relative simplicity, the deterministic model performs extremely well on this data. With a very strong correlation coefficient between the model-estimated population and that estimated by the HYDE, we can be fairly confident that at least against the HYDE 3.2 data, predictions are fairly accurate. However, the system's overreliance on self-verification using those estimates is also a significant weakness of the system; in the future, it would be prudent to test against other estimates of population and population decline, even simply testing the population of cities against what is reported by other historical sources. Furthermore, it would be prudent to test far more parameter sets than are tested here, however due to the exponentially-increasing compute time that grid search consumes as parameters are added, in the interest of time, the current parameter set provides a reasonable enough fit.
+  
+  Of the parameters that are present, some seem to be far more influential than others. For example, 
+  
+  Additionally, it is interesting that the preferred model differs between population count and deaths. This may also be the result of a dearth of adequate parameters in the system. Because deaths and surviving population are two sides of the same coin, linked mathematically through the system $A = R + S, R = I - D, D = mortality \times I$, it seems fairly intuitive that adding at the very least a hyperparameter for $mortality$ instead of having it as a constant value would likely help to remedy this issue. Furthermore, some plague models [@Dean.etalHumanEctoparasitesSpread2018; @Sichone.etalEstimatingBasicReproduction2020; Nguyen.etal2017PlagueOutbreak2018] add differing mortality and infection rates for various forms of the disease, as well as the capability to transition between these states. This certainly would likely also be a key step towards more accurate and realistic modelling. Unfortunately, doing so would preclude the continued usage of grid search to tune the parameters, as it would necessitate the addition of a huge swathe of new hyperparameters, likely skyrocketing the required computational time for this method far, far into the realm of infeasability.
+  
+  As population increases, both correlation plots seem to diverge into two pathways, one in which my estimates are too high, and one in which they are too low. This seems to indicate that the current set of parameters this system applies to the data is not adequate, and that there are other factors which are unaccounted for. @Hu.etalScalingContactRates2013
+  
+  
+
 - note the implications behind the parameters which were successful, esp. that worst_case.
-- note that mortality wasnt really hugely influential, or at least not as influential as raising effectiveness over distance
+- note that some parameters are useless and still more parameters are likely necessary to get higher accuracy
 
 
-```{r top_correlation_chart, echo=FALSE}
+```{r top_correlation_chart_A, echo=FALSE, out.height='80%', fig.cap='Most Correlated Population Model Estimated vs. Actual Plot'}
 most_corr_idx_A = which.max(correlations_A)
 plot(terra::values(final_alive[[most_corr_idx_A]]) ~ terra::values(ad1400_popc_rast),
      xlab = 'Actual Population',
@@ -465,27 +461,11 @@ plot(terra::values(final_alive[[most_corr_idx_A]]) ~ terra::values(ad1400_popc_r
 abline(lm(terra::values(final_alive[[most_corr_idx_A]]) ~ terra::values(ad1400_popc_rast)))
 legend("topleft", legend=paste0('Model #', most_corr_idx_A,
                                ' Final Alive Correlation = ', round(correlations_A[[most_corr_idx_A]], 2)))
-
-most_corr_idx_D = which.max(correlations_D)
-plot(terra::values(final_dead[[most_corr_idx_D]]) ~ terra::values(-death_raster),
-     xlab = 'Actual Population Decrease',
-     ylab = 'Expected Population Decrease')
-abline(lm(terra::values(final_dead[[most_corr_idx_D]]) ~ terra::values(-death_raster)))
-legend("topleft", legend=paste0('Model #', most_corr_idx_D,
-                               ' Final Death Correlation = ', round(correlations_D[[most_corr_idx_D]], 2)))
-
-most_corr_idx_P = which.max(correlations_P)
-plot(terra::values(final_susc[[most_corr_idx_P]]) ~ terra::values(ad1400_popc_rast),
-     xlab = 'Actual Final Population',
-     ylab = 'Expected Final Population')
-abline(lm(terra::values(final_susc[[most_corr_idx_P]]) ~ terra::values(ad1400_popc_rast)))
-legend("topleft", legend=paste0('Model #', most_corr_idx_P,
-                               ' Final S. Pop. Correlation = ', round(correlations_P[[most_corr_idx_P]], 2)))
 ```
 
 
-```{r best_model_result, echo=FALSE}
-tm_shape(basemap) +
+```{r best_model_result_A, echo=FALSE, fig.cap='Comparison of 1400AD Population Estimate Rasters', fig.height = 27, fig.width = 20}
+a_coll = list(tm_shape(basemap) +
   tm_rgb(alpha=0.8) +
   tm_shape(final_alive[[most_corr_idx_A]], raster.downsample=F) +
   tm_raster(alpha=0.7, 
@@ -499,19 +479,113 @@ tm_shape(basemap) +
                      6400.0,
                      12000.0,
                      24000.0,
-                     48000.0),
-                     title="",legend.show=T) +
-  tm_layout(legend.position=c('left', 'top'),
+                     48000.0), title="People in cell") +
+  tm_layout(legend.position=c('right', 'center'),
             frame=FALSE,
+            title.snap.to.legend = T,
             legend.outside=TRUE,
-            main.title=paste0('Model #',most_corr_idx_A,' Predicted Population in 1400AD'))
+            legend.outside.position='left',
+            main.title.size = 2.4,
+            legend.text.size = 2.4,
+            legend.title.size = 2.4,
+            main.title.position='center',
+            main.title=paste0('1400AD Model #',most_corr_idx_A,' Pop. Count Estimate')),
+
+  tm_shape(basemap) +
+    tm_rgb(alpha=0.8) +
+    tm_shape(ad1400_popc_rast, raster.downsample=F) +
+    tm_raster(alpha=0.7, 
+              breaks=c(0.0,
+                       100.0,
+                       200.0,
+                       400.0,
+                       800.0,
+                       1600.0,
+                       3200.0,
+                       6400.0,
+                       12000.0,
+                       24000.0,
+                       48000.0), title='People in cell') +
+    tm_layout(legend.position=c('right', 'center'),
+              frame=FALSE,
+              main.title.position='center',
+              main.title.size = 2.4,
+              legend.text.size = 2.4,
+              legend.title.size = 2.4,
+              legend.outside = T,
+              legend.outside.position='left',
+              main.title='HYDE 3.2 Prediction'))
+
+tmap_arrange(a_coll[[1]], a_coll[[2]], ncol=1)
 ```
 
 
-$$
-e^{-{x^{\sqrt[2]{3}}}}
-$$
+```{r top_correlation_chart_D, echo=FALSE, fig.cap='Most Correlated Death Model Estimated vs. Actual Plot', out.height='80%'}
+most_corr_idx_D = which.max(correlations_D)
+plot(terra::values(final_dead[[most_corr_idx_D]]) ~ terra::values(-death_raster),
+     xlab = 'Actual Population Decrease',
+     ylab = 'Expected Population Decrease')
+abline(lm(terra::values(final_dead[[most_corr_idx_D]]) ~ terra::values(-death_raster)))
+legend("topleft", legend=paste0('Model #', most_corr_idx_D,
+                               ' Final Death Correlation = ', round(correlations_D[[most_corr_idx_D]], 2)))
+```
 
+
+```{r best_model_result_D, echo=FALSE, fig.cap='Comparison of 1400AD Population Estimates', fig.height = 27, fig.width = 20}
+d_coll = list(tm_shape(basemap) +
+              tm_rgb(alpha=0.8) +
+              tm_shape(final_dead[[most_corr_idx_D]], raster.downsample=F) +
+              tm_raster(alpha=0.7, 
+                        breaks=c(0.0,
+                                 100.0,
+                                 200.0,
+                                 400.0,
+                                 800.0,
+                                 1600.0,
+                                 3200.0,
+                                 6400.0,
+                                 12000.0,
+                                 24000.0,
+                                 48000.0), title="Deaths in cell", midpoint=0) +
+              tm_layout(legend.position=c('right', 'center'),
+                        frame=FALSE,
+                        legend.outside=TRUE,
+                        legend.outside.position='left',
+                        main.title.position='center',
+                        main.title.size = 2.4,
+                        legend.text.size = 2.4,
+                        legend.title.size = 2.4,
+                        main.title=paste0('Model #',most_corr_idx_D,' Death Estimate')),
+            
+              tm_shape(basemap) +
+                tm_rgb(alpha=0.8) +
+                tm_shape(-death_raster, raster.downsample=F) +
+                tm_raster(alpha=0.7, 
+                          breaks=c(0.0,
+                                   100.0,
+                                   200.0,
+                                   400.0,
+                                   800.0,
+                                   1600.0,
+                                   3200.0,
+                                   6400.0,
+                                   12000.0,
+                                   24000.0,
+                                   48000.0), title="Deaths in cell",
+                                              legend.is.portrait = T,
+                                              midpoint=0) +
+                tm_layout(legend.position=c('right', 'center'),
+                          frame=FALSE,
+                          main.title.position='center',
+                          legend.outside = T,
+                          legend.outside.position='left',
+                          main.title.size = 2.4,
+                          legend.text.size = 2.4,
+                          legend.title.size = 2.4,
+                          main.title='HYDE 3.2 Prediction'))
+
+tmap_arrange(d_coll[[1]], d_coll[[2]], ncol=1)
+```
 
 
 ## References
