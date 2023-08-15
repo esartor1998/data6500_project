@@ -2,17 +2,18 @@
 title: "Report"
 author: "Eric Sartor"
 date: "`r Sys.Date()`"
+header-includes:
+  - \DeclareMathOperator{\norm}{norm}
 output: pdf_document
 bibliography: bibliography.bib
 csl: ieee.csl
-nocite: '@*'
 ---
 
 ## Introduction
 
 ### Description of the Plague
 
-notes: please change the simulation back to normal when done
+NOTES: please change the simulation back to normal when done. also return the DOWNLOAD FILES TO NORMAL
 
 The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @Jedwab.etalPandemicsPlacesPopulations2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @EvansPneumonicPlagueIncidence2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @WorldHealthOrganizationPlague. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @A.D.A.M.Inc.Plague, with death following shortly thereafter @Pechous.etalPneumonicPlagueDarker2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. 
 
@@ -32,11 +33,24 @@ The recent digitization of a substantial volume of plague records @Buntgen.etalD
 
 ### Preliminary Work Motivating the Model
 
-Unless otherwise specified, all analyses were performed using the R language @rcoreteamLanguageEnvironmentStatistical2023. Firstly, a raster containing the population difference between 1300AD and 1400AD was created. This raster is variously referred to in this report as the "death raster", or "population difference raster". It represents the loss or gain in population over the 14th century as estimated by the HYDE. In a normal century, it would be expected that the population would grow in most regions, but over the course of the 14th century there was significant population decrease in most regions. As a result, and given the general small magnitude of such positive numbersFocal correlation was assessed using the appropriate function through `terra`'s `focalPairs` function @hijmansTerraSpatialData2023.
-- the plague over death raster
-- the correlation between population density and deaths, and WHY its important/'_surprising_'
+Unless otherwise specified, all analyses were performed using the R language @rcoreteamLanguageEnvironmentStatistical2023. 
+Firstly, a raster containing the population difference between 1300AD and 1400AD was computed. This raster, visible in Figure (???), is variously referred to in this report as the "death raster", or "population difference raster". It represents the loss or gain in population count in each cell over the 14th century as estimated by the HYDE. One would normally expect wholesale population growth, but as a result of the devastation wrought by the Second Pandemic, the population difference raster is mostly negative, with population gain generally only in more remote regions. 
+As a result of this, and given the generally small magnitude of the population gain, a model purely estimating deaths rather than attempting to include population gain as well was used to massively simplify the required calculation.
+
+Next, in order to assess sanity of the outbreak data, as well as its correlation with the HYDE estimates, Poisson point process methods were used to generate an intensity (points per unit area) estimate for the outbreak data as a function of the death raster. Specifically, the outbreak data preceding 1400AD was interpreted as a single Poisson point process, and a nonparametric intensity estimate was taken through `spatstat`'s `rhohat` function @baddeleySpatstatPackageAnalyzing2005. Then, a raster was computed depicting the predicted intensity at every cell in the death raster, resulting in Figure (???). This informed the usage of the outbreak data in general, providing confidence that it was correlated with deaths. Further, some authors cast doubt upon the usefulness of the Schmid et al data, stating that it may be missing key outbreaks in Europe, as the intensity of the points in Northern Italy in their opinion did not align with other historical accounts @roosenDangersNoncriticalUse2018. This analysis, however, finds a high intensity in the allegedly problematic regions, providing confidence that the usage of the outbreak data is not detrimental to the legitimacy of any results.
+
+Additionally, it is significant that the death raster is quite similar to the population density raster for the year 1300AD, as the population difference raster is generated only using population count data: this explicitly points to population density as a key factor in the relationship. In order to further assess the nature of the relationship between population density and population difference, focal correlation between the two rasters was assessed using the `focalPairs` function available through `terra` @hijmansTerraSpatialData2023, and is visible in Figure (???). While a negative correlation between population density and population growth was expceted, the positive correlation found in some regions indicates that difficult-to-model factors such as migration may be present. (SAY more about this?) 
 
 ### Deterministic Model
+
+The model is run on each outbreak year chronologically. While technically a recursive algorithm, it is not implemented as such in order to save resources during processing. All generated rasters are identical in dimension to the population density and count rasters obtained through the HYDE, and no downscaling is performed. Additionally, all calculations are performed on unprojected data, as `terra`'s `distance` function is significantly more accurate with unprojected data than on projected data. The $\norm{}$ function represents the uniform scaling, or normalization, of a value to between 0.0 and 1.0, and is defined by $\frac{x - \min{(x)}}{\max{(x)} - min{(x)}}$.
+
+Firstly, the outbreak points for ${year}$ are taken, and a raster $dist_{rast}$ is computed where the value of each pixel is inversely proportional to their distance from the closest outbreak according to $h = \exp({-m\norm{(ad^{\rho}})})$, where $d$ is the closest distance to an outbreak point returned for each pixel by `terra`'s `distance` function. $m$ $a$ and $x$ are scaling parameters for which various values are tested: $m$ scales the largest negative value that $e$ can be raised to, $a$ increases the area underneath the curve close to the $y$ axis by "lifting" the graph upwards, and $x$ disproportionately increases the value returned for pixels extremely close to the closest outbreak point. Effectively, $m$ and $a$ scale the overall range of an outbreak's effect, while $x$ scales the distance where the outbreak will be the most devastating.
+
+Before describing how the estimated infected population raster is calculated, it is imperative to define several other rasters as well. The susceptible population density raster, $dens_{rast}$, wherein each cell's value represents the density of susceptible individuals within any given cell. The initial value of $dens_{rast}$ is the population density in 1300AD. The susceptible population _density_ raster is recalculated each year based upon $S_{rast}$, the susceptible population _count_ raster. The initial value of this raster is the population count in 1300AD.
+
+Next, the infected population estimate raster is calculated, by $s(dens_{rast})(dist_{rast})$. The density and distance rasters are multiplied together, cell-by-cell, as well as by a normalized scalar parameter, $s$, representing the maximal yearly saturation percentage within susceptible individuals; this value is tested multiple times between 0.0 and 1.0. $s$ exists as according to current scholarship, even the cities hit most severely with plague only lost at most 50-80% of their populations @DorseyArmstrongHowPolandMilan2021 @Cesana.etalOriginEarlySpread2017 @Roosen.CurtisLightTouchBlack2019 @Jedwab.etalPandemicsPlacesPopulations2019.
+It is crucial to note that $dens_{rast}$ is not normalized, thus areas with a high density of susceptible individuals will be struck most severely with plague. However, because the susceptible population density is adjusted each iteration, this is seen most acutely when the area experiences its first outbreak. Additionally of note is that the value of $dist_{rast}$ approaches 0 at an exponential rate with distance to a recorded outbreak, allowing the progression of the disease to roughly follow the point pattern present in the outbreaks dataset, and for the countryside to be less severely affected than denser, more urban areas where outbreaks are typically recorded.
 
 - describe the model's terms, the motivation behind each + each normaliz8n
 - describe the formula for the model
@@ -98,49 +112,49 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FAL
 basemap = read_osm(bbox, type='apple-iphoto', mergeTiles=TRUE)
 #should maybe project these too if i go back to that
 
-download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw',
-              './combined-maritime-traderoutes.csv')
+#download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw',
+#              './combined-maritime-traderoutes.csv')
 maritime_routes_sf = read_sf('./combined-maritime-traderoutes.csv')
 st_crs(maritime_routes_sf) = unprojected_crs
 maritime_routes_sf = st_transform(maritime_routes_sf, unprojected_crs) %>%
                      st_crop(unproj_bbox)
 
-download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/master/1279.zip', 
-              './1279_borders.zip') #download directly from an archive, as streaming from my server
+#download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/master/1279.zip', 
+#              './1279_borders.zip') #download directly from an archive, as streaming from my server
                                     #crashes on windows (i think some sort of php bug on the serv.)
                                     #note: make sure to cite this archive in the bibliography!! 
-unzip('./1279_borders.zip')
+#unzip('./1279_borders.zip')
 borders = read_sf('./cntry1279.shp')
 st_crs(borders) = unprojected_crs
 borders = st_transform(borders, unprojected_crs) %>%
           st_crop(unproj_bbox)
 
-download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw',
-              './popc_1300AD.asc')
+#download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw',
+#              './popc_1300AD.asc')
 ad1300_popc_rast = rast('./popc_1300AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox) #%>%
 
 units(ad1300_popc_rast) = 'ppl/cell'
 
-download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw',
-              './popd_1300AD.asc')
+#download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw',
+#              './popd_1300AD.asc')
 ad1300_popd_rast = rast('./popd_1300AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox)
 
 units(ad1300_popd_rast) = 'ppl/km²'
 
-download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw',
-              './popc_1400AD.asc')
+#download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw',
+#              './popc_1400AD.asc')
 ad1400_popc_rast = rast('./popc_1400AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox)
 
 units(ad1400_popc_rast) = 'ppl/cell'
 
-download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw',
-              './plague-db-europe.txt')
+#download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw',
+#              './plague-db-europe.txt')
 
 death_raster = ad1400_popc_rast - ad1300_popc_rast
 ```
@@ -216,8 +230,35 @@ rm(json_raw)
 rm(json_lines)
 ```
 
+```{r death_raster, echo=FALSE}
+tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsample=FALSE) + tm_raster(alpha=0.7,
+                                                                  breaks=c(-51200.0
+                                                                          -25600.0,
+                                                                          -12800.0,
+                                                                          -6400.0,
+                                                                          -3200.0,
+                                                                          -1600.0,
+                                                                          -800.0,
+                                                                          -400.0,
+                                                                          -200.0,
+                                                                          -100.0,
+                                                                            0.0,
+                                                                           100.0,
+                                                                           200.0,
+                                                                           400.0,
+                                                                           800.0,
+                                                                           1600.0),
+                                                                  title="") +
+        tm_layout(legend.position=c("left", "top"),
+                  frame=FALSE,
+                  legend.outside=TRUE,
+                  legend.bg.alpha=0.6,
+                  main.title='Pop. Diff 1400AD-1300AD')
+```
 
-```{r focal_correlation_between_deaths_and_popd}
+
+
+```{r focal_correlation_between_deaths_and_popd, echo=FALSE}
 death_on_popd = rast(list(ad1300_popd_rast, death_raster))
 crs(death_on_popd) = unprojected_crs
 correlation = focalPairs(death_on_popd, w = 3, cor) #WARNING: this may crash if your libraries are not up-to-date!
@@ -227,10 +268,12 @@ tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(correlation, raster.downsample=
   tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
   tm_layout(legend.position=c("left", "top"), frame=FALSE, 
             legend.bg.alpha=0.6,
+            legend.outside=TRUE,
+            frame=FALSE,
             main.title="Focal Correlation Between\nDeaths and 1300AD Pop. Dens.")
 ```
 
-```{r predicted_intensity_through_rhohat}
+```{r predicted_intensity_through_rhohat, echo=FALSE}
 #first we gotta project the data. I'm choosing ED1950 Albers, as it covers the target area decently
 death_raster_proj = death_raster %>%
                     terra::project(projected_crs)
@@ -258,13 +301,16 @@ tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(predrast, raster.downsample=FAL
                                                   palette = 'Spectral',
                                                   title = 'Intensity') +
   tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
-  tm_layout(legend.position = c('left', 'top'), main.title = '14th Century Predicted Intensity')
+  tm_layout(legend.position=c('left', 'top'),
+            frame=FALSE,
+            legend.outside=TRUE,
+            main.title='14th Century Predicted Intensity')
 ```
 
 
 spatial autocorrelation in the fact that outbreaks are considered based on distance from the pixel, and that there is s.ac. in the density/count data
 
-i *cannot* use linear population density scaling: *each cell's original size is warped by the projection*; as such, i need to obtain a per-pixel scaling value to convert pop to popd. luckily, terra has a "cellsize" function we can use to calculate
+i *cannot* use linear population density scaling: *each cell's original size is warped by the ellipsoid*; as such, i need to obtain a per-pixel scaling value to convert pop to popd. luckily, terra has a "cellsize" function we can use to calculate
 
 
 starting 1300, for each year:
@@ -274,6 +320,8 @@ starting 1300, for each year:
     - also generate a new population density for the tile.
 
 - this does not account for migration in/out of cities as a result of population loss
+
+- does not account for saturation of popd. as a proxy for contacts
 
 -need to programmatically run this multiple times, with multiple different parameters, to compare
 
@@ -304,14 +352,15 @@ target_years = all_target_years[which(all_target_years$year > 1345 &
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
-d_smoothing = c(0.8)
+d_smoothing = c(0.4, 0.6, 0.8)
               #seq(0.40, 0.80, by=0.2) #size of the region extremely close to 1.0 in distance raster
-d_coeff =     c(8)
+d_coeff =     c(6, 8, 10)
               #seq(6, 10, by=2) #size of the overall region above d_threshold in distance raster
+d_max_range = c(3, 6)
 
-worst_case =  c(0.9)
+worst_case =  c(0.5, 0.9)
               #seq(0.5, 0.9, by=0.2) #estimated maximum yearly saturation % of infection among S
-mortality   = c(0.6)
+mortality   = c(0.8) #@TotaroSufferingParadiseBubonic2005
               #seq(0.4, 0.8, by=0.2) #estimated average mortality over all forms contracted
 
 #non-tunable params
@@ -384,26 +433,7 @@ legend("topleft", legend=paste('Model', most_corr_idx,
 ```
 
 
-```{r map_comparions, echo=FALSE}
-tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsample=FALSE) + tm_raster(alpha=0.7,
-                                                                  breaks=c(-51200.0
-                                                                          -25600.0,
-                                                                          -12800.0,
-                                                                          -6400.0,
-                                                                          -3200.0,
-                                                                          -1600.0,
-                                                                          -800.0,
-                                                                          -400.0,
-                                                                          -200.0,
-                                                                          -100.0,
-                                                                            0.0,
-                                                                           100.0,
-                                                                           200.0,
-                                                                           400.0,
-                                                                           800.0,
-                                                                           1600.0)) +
-        tm_layout(legend.position=c("left", "top"), frame=FALSE, legend.bg.alpha=0.6, main.title='Pop. Diff 1400AD-1300AD')
-
+```{r best_model_result, echo=FALSE}
 tm_shape(basemap) +
   tm_rgb(alpha=0.8) +
   tm_shape(final_dead[[most_corr_idx]], raster.downsample=F) +
