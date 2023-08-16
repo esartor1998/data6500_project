@@ -28,7 +28,6 @@ link-citations: true
 
 * A digitized plague mentions dataset, including both mentions and well-known maritime trade routes @schmidSourceCodeDatasets2015 compiled for the paper "Climate-driven introduction of the Black Death and successive plague reintroductions into Europe" @schmidClimatedrivenIntroductionBlack2015
 * HYDE 3.2 @kleingoldewijkAnthropogenicLandUse2017, a monumental collection of rasters, encoding global environmental conditions and other information, including the most recent historical population and population density estimates currently available for pre-census periods. The rasters are available in 100-year intervals during the period of interest, at a resolution of 85km$^2$.
-* Approximate European borders shapefile for the year 1279 from a ThinkQuest educational web-site design competition held in 2000 @ThinkQuestTeamC006628TeachingHistoryGIS2000. While this data is entirely student-created and may present minor inaccuracies, as it is used simply for the purposes of aiding in visualization, this is not a major concern.
 * Basemap tilesets for visualization by Apple, through `tmaptools` @TennekesTmapThematicMaps2018
 
 
@@ -52,7 +51,7 @@ tmap_mode('plot')
 projected_crs = 'EPSG:3857'
 unprojected_crs = 'EPSG:4326'
 
-unproj_bbox = bbox = st_bbox(c(xmin = -16.26,
+unproj_bbox = st_bbox(c(xmin = -16.26,
                  xmax = 42.98,
                  ymin = 27.92,
                  ymax = 61.54),
@@ -84,16 +83,6 @@ maritime_routes_sf = read_sf('./combined-maritime-traderoutes.csv')
 st_crs(maritime_routes_sf) = unprojected_crs
 maritime_routes_sf = st_transform(maritime_routes_sf, unprojected_crs) %>%
                      st_crop(unproj_bbox)
-
-download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/master/1279.zip', 
-              './1279_borders.zip') #download directly from an archive, as streaming from my server
-                                    #crashes on windows (i think some sort of php bug on the serv.)
-                                    #note: make sure to cite this archive in the bibliography!! 
-unzip('./1279_borders.zip')
-borders = read_sf('./cntry1279.shp')
-st_crs(borders) = unprojected_crs
-borders = st_transform(borders, unprojected_crs) %>%
-          st_crop(unproj_bbox)
 
 download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw',
               './popc_1300AD.asc')
@@ -250,7 +239,6 @@ tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsamp
                                                                            800.0,
                                                                            1600.0),
                                                                   title='') +
-        tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
         tm_layout(legend.position=c('left', 'top'),
                   frame=FALSE,
                   legend.outside=TRUE,
@@ -273,7 +261,6 @@ correlation = focalPairs(death_on_popd, w = 3, cor) #WARNING: this may crash if 
 
 tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(correlation, raster.downsample=FALSE) +
   tm_raster(alpha=0.7, palette='Spectral', title='') + 
-  tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
   tm_layout(legend.position=c('left', 'top'),
             frame=FALSE, 
             legend.bg.alpha=0.6,
@@ -309,7 +296,6 @@ tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(predrast, raster.downsample=FAL
                                                   breaks = c(0,0.05,0.1,0.15,0.2,0.25,0.3,0.35), 
                                                   palette = 'Spectral',
                                                   title = 'Intensity') +
-  tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
   tm_layout(legend.position=c('left', 'top'),
             frame=FALSE,
             legend.outside=TRUE,
@@ -346,13 +332,13 @@ target_years = all_target_years[which(all_target_years$year > 1345 &
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
-d_smoothing = c(0.3, 0.7) #size of the region extremely close to 1.0 in distance raster
+d_smoothing = c(0.3)#, 0.6, 0.9) #size of the region extremely close to 1.0 in distance raster
+                               #girls wanna drink wiyne
+d_coeff =     c(2)#, 50) #adjusts the overall region above d_threshold in distance raster
 
-d_coeff =     c(2, 50) #adjusts the overall region above d_threshold in distance raster
+d_max_range = c(3)#, 6, 12)
 
-d_max_range = c(3, 6, 12)
-
-worst_case =  c(0.75, 0.9) #estimated maximum yearly saturation % of infection among S
+worst_case =  c(0.75)#, 0.9) #estimated maximum yearly saturation % of infection among S
 
 #non-tuned params:
 d_threshold = 0.01 #value at which we would like to round to 0, to prevent global infection
@@ -368,7 +354,7 @@ final_susc = list()
 correlations_A = list()
 correlations_D = list()
 correlations_P = list()
-for (trial in split(params, seq(nrow(params)))) {
+for (trial in split(params, seq(nrow(params)))) { #this could be made far more efficient, but no time
   iter = iter + 1
   susceptible = list()
   infected = list()
@@ -427,7 +413,6 @@ for (trial in split(params, seq(nrow(params)))) {
                                        2560.0,
                                        5120.0,
                                        10240.0), title="Deaths in Area") +
-                    tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
                     tm_layout(legend.position=c('right', 'center'),
                               frame=FALSE,
                               title.snap.to.legend = T,
@@ -499,7 +484,6 @@ a_coll = list(tm_shape(basemap) +
                      12000.0,
                      24000.0,
                      48000.0), title="People in cell") +
-  tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
   tm_layout(legend.position=c('right', 'center'),
             frame=FALSE,
             title.snap.to.legend = T,
@@ -526,7 +510,6 @@ a_coll = list(tm_shape(basemap) +
                        12000.0,
                        24000.0,
                        48000.0), title='People in cell') +
-    tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
     tm_layout(legend.position=c('right', 'center'),
               frame=FALSE,
               main.title.position='center',
@@ -568,7 +551,6 @@ d_coll = list(tm_shape(basemap) +
                                  12000.0,
                                  24000.0,
                                  48000.0), title="Deaths in cell", midpoint=0) +
-              tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
               tm_layout(legend.position=c('right', 'center'),
                         frame=FALSE,
                         legend.outside=TRUE,
@@ -596,7 +578,6 @@ d_coll = list(tm_shape(basemap) +
                                    48000.0), title="Deaths in cell",
                                               legend.is.portrait = T,
                                               midpoint=0) +
-                tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
                 tm_layout(legend.position=c('right', 'center'),
                           frame=FALSE,
                           main.title.position='center',
