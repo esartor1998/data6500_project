@@ -19,19 +19,18 @@ link-citations: true
 
 NOTES: please change the simulation back to normal when done. also return the DOWNLOAD FILES TO NORMAL
 
-  The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @Jedwab.etalPandemicsPlacesPopulations2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @EvansPneumonicPlagueIncidence2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @WorldHealthOrganizationPlague. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @A.D.A.M.Inc.Plague, with death following shortly thereafter @Pechous.etalPneumonicPlagueDarker2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. 
+  The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @Jedwab.etalPandemicsPlacesPopulations2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @EvansPneumonicPlagueIncidence2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @WorldHealthOrganizationPlague. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @A.D.A.M.Inc.Plague, with death following shortly thereafter @Pechous.etalPneumonicPlagueDarker2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. While in modern times it may be curable with antibiotics if caught early enough, in the Middle Ages, it shared pneumonic plague's certain mortality.
+  
+  The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @WorldHealthOrganizationPlague. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @Hufthammer.WalloeRatsCannotHave2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas [@Dean.etalHumanEctoparasitesSpread2018; @Sichone.etalEstimatingBasicReproduction2020]
 
-  While it is more treatable than pneumonic plague, in the Middle Ages, as no treatment was known for any form of the disease, it shared pneumonic plague's certain mortality. 
-The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @WorldHealthOrganizationPlague. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @Hufthammer.WalloeRatsCannotHave2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas [@Dean.etalHumanEctoparasitesSpread2018; @Sichone.etalEstimatingBasicReproduction2020]
-
-  The recent digitization of a substantial volume of plague records @Buntgen.etalDigitizingHistoricalPlague2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @kleingoldewijkAnthropogenicLandUse2017 allow for myriad novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease throughout various regions of Europe can help to provide historical context for events and developments in the region throughout the Middle Ages. Furthermore, given the severity and gruesome nature of the disease, modelling its spread through and impact upon Medieval Europe may prove a sobering reminder of the potential severity of an incurable epidemic. 
+  The recent digitization of a substantial volume of plague records @Buntgen.etalDigitizingHistoricalPlague2012 alongside new fine-grained population estimate rasters for pre-census periods through the HYDE project @kleingoldewijkAnthropogenicLandUse2017 allow for a myriad of novel analysis of the Second Pandemic. Through analysis of the characteristics and traits of the disease in a time when effective medical treatment for most diseases was completely unknown, further knowledge regarding societal responses to disease as well as the effect of unchecked disease on a population can be studied. Additionally, knowledge of the true severity of the disease throughout various regions of Europe can help to provide historical context for events and developments in the region throughout the Middle Ages. Furthermore, given the severity and gruesome nature of the disease, modelling its spread through and impact upon Medieval Europe may prove a sobering reminder of the potential severity of an incurable epidemic. 
   Therefore, the objective of this model is to attempt to model the yearly local impact of the Black Death throughout the whole of Europe, and in doing so to estimate crucial geographic characteristics of the epidemic. 
 
 ## Data Sources
 
 * A digitized plague mentions dataset, including both mentions and well-known maritime trade routes @schmidSourceCodeDatasets2015 compiled for the paper "Climate-driven introduction of the Black Death and successive plague reintroductions into Europe" @schmidClimatedrivenIntroductionBlack2015
 * HYDE 3.2 @kleingoldewijkAnthropogenicLandUse2017, a monumental collection of rasters, encoding global environmental conditions and other information, including the most recent historical population and population density estimates currently available for pre-census periods. The rasters are available in 100-year intervals during the period of interest, at a resolution of 85km$^2$.
-* Approximate European borders shapefile for 1279 from a ThinkQuest educational web-site design competition held in 2000 @ThinkQuestTeamC006628TeachingHistoryGIS2000. While this data is entirely student-created and may present minor inaccuracies, as it is used simply for the purposes of aiding in visualization, this is not a major concern.
+* Approximate European borders shapefile for the year 1279 from a ThinkQuest educational web-site design competition held in 2000 @ThinkQuestTeamC006628TeachingHistoryGIS2000. While this data is entirely student-created and may present minor inaccuracies, as it is used simply for the purposes of aiding in visualization, this is not a major concern.
 * Basemap tilesets for visualization by Apple, through `tmaptools` @TennekesTmapThematicMaps2018
 
 
@@ -231,10 +230,10 @@ It is also crucial to note that $dens_{rast}$ is not normalized, thus cells with
   
   With all this complete, $I$ is multiplied by $mortality$ in order to approximate the number of those infected who will die; for this simulation, the scalar value $0.8 = mortality$ is used. This 80% mortality rate is based upon various estimates of the average contemporary mortality across all forms of the disease [@Pechous.etalPneumonicPlagueDarker2016; @EvansPneumonicPlagueIncidence2022; @Dean.etalHumanEctoparasitesSpread2018; @TotaroSufferingParadiseBubonic2005; @CohnEpidemiologyBlackDeath2008]. $mortality$ was initially tested with multiple values, but as it seemed have very little impact upon the result, and greatly expanded the search space, it was instead set to a scalar value to save computation time. In any case, the resulting raster, $D$, represents only the dead individuals from the outbreak year currently being analysed, *not* the cumulative number of deaths over the entire epidemic, as it is based on the instantaneous $I$. All yearly $D$ rasters must be summed at the end of recursion in order to compute a total estimate. $R$, or the raster of recovered individuals for the year, is also calculated by $I - D$.
 
-  The algorithm is run until final year is reached. Then, all rasters $D$ and $R$ are summed respectively to $D_{total}$ and $R_{total}$, estimates for the total number of deaths and recoveries per cell over the entire 14th century. The correlation between these approximations and the values estimated in the HYDE are also computed. In the case of the estimated death number, correlation is measured against the inversely-signed population difference raster, as deaths in that raster are represented by a negative number, but this model can only produce positive numbers. The correlation between the population count in 1400AD and the model's final population estimate raster $A$, which is computed by $A = S_{final} + R_{total}$, is also tracked. The grid search is run to completion, with all unique combinations of the $m$, $a$, $x$, and $s$ parameters, and the submodel correlations between expected and actual values for both deaths and population are selected and displayed, visible in Figure \@ref(fig:topCorrelationChartD), and in Figure \@ref(fig:topCorrelationChartA). The predicted 1400AD rasters for deaths and remaining population are Figure \@ref(fig:bestModelResultD) and Figure \@ref(fig:bestModelResultA), respectively, with the HYDE estimates side-by-side for comparison. Additionally, snapshots of key years of the epidemic as predicted in the best deaths submodel are also included in Figure \@ref(fig:bestModelResultA) THIS IS WRONG within the non-technical summary.
+  The algorithm is run until final year is reached. Then, all rasters $D$ and $R$ are summed respectively to $D_{total}$ and $R_{total}$, estimates for the total number of deaths and recoveries per cell over the entire 14th century. The correlation between these approximations and the values estimated in the HYDE are also computed. In the case of the estimated death number, correlation is measured against the inversely-signed population difference raster, as deaths in that raster are represented by a negative number, but this model can only produce positive numbers. The correlation between the population count in 1400AD and the model's final population estimate raster $A$, which is computed by $A = S_{final} + R_{total}$, is also tracked. The grid search is run to completion, with all unique combinations of the $m$, $a$, $x$, and $s$ parameters, and the submodel correlations between expected and actual values for both deaths and population are selected and displayed, visible in Figure \@ref(fig:topCorrelationChartD), and in Figure \@ref(fig:topCorrelationChartA). The predicted 1400AD rasters for deaths and remaining population are Figure \@ref(fig:bestModelResultD) and Figure \@ref(fig:bestModelResultA), respectively, with the HYDE estimates side-by-side for comparison. Additionally, snapshots of key years of the epidemic as predicted in the best deaths submodel are also included in Figure \@ref(fig:keyYearDeaths) within the non-technical summary.
 
 
-```{r deathRaster, echo=FALSE, fig.cap="The Population Difference Raster, or 'Death Raster'", out.height='80%'}
+```{r deathRaster, echo=FALSE, fig.cap='The Population Difference Raster, or "Death Raster"', out.height='70%'}
 tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsample=FALSE) + tm_raster(alpha=0.7,
                                                                   breaks=c(-51200.0
                                                                           -25600.0,
@@ -252,8 +251,9 @@ tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsamp
                                                                            400.0,
                                                                            800.0,
                                                                            1600.0),
-                                                                  title="") +
-        tm_layout(legend.position=c("left", "top"),
+                                                                  title='') +
+        tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
+        tm_layout(legend.position=c('left', 'top'),
                   frame=FALSE,
                   legend.outside=TRUE,
                   legend.bg.alpha=0.6,
@@ -268,15 +268,15 @@ tm_shape(basemap) + tm_rgb(alpha = 0.8) + tm_shape(death_raster, raster.downsamp
   While the resultant models themselves are the key focus of this report, the preliminary work also yielded some interesting results worthy of discussion. The focal correlation plot generated for Figure \@ref(fig:focalCorrelationBetweenDeathsAndPopd) is primarily reassuring due to the large swathe of reasssuringly negatively correlated space, however the areas which are positively correlated are also interesting and point to additional conclusions that can be gleaned from the data. Major cities of such as Paris, Berlin, and Vienna are counterintuitively strongly *positively* correlated with population difference. In other words: despite being dense urban areas, they seemed to experience relative growth in contrast to other major cities of the time which were strongly negatively correlated, like London, Munich, or Milan. This could point to a pattern of migration into urban areas from less-affected rural communities as a result of the severe and abrupt population shock [@DorseyArmstrongHowPolandMilan2021; @Siuda.SundeDiseaseDemographicDevelopment2021; @Jedwab.etalPandemicsPlacesPopulations2019]. This phenomenon is of immense interest to anthropologists, especially those interested in human movement and the dramatic societal and cultural shifts that manifested in the regions where this positive correlation is present shortly after the most devastating years of plague had passed @A.D.A.M.Inc.Plague. Unfortunately, the methods utilized in this paper are not robust enough to make predictions about this phenomenon, though it presents a promising avenue for future work. 
 
 
-```{r focalCorrelationBetweenDeathsAndPopd, echo=FALSE, fig.cap='Pop. Dens. and Pop. Diff. Spatial Focal Correlation', out.height='80%'}
+```{r focalCorrelationBetweenDeathsAndPopd, echo=FALSE, fig.cap='Pop. Dens. and Pop. Diff. Spatial Focal Correlation', out.height='70%'}
 death_on_popd = rast(list(ad1300_popd_rast, death_raster))
 crs(death_on_popd) = unprojected_crs
 correlation = focalPairs(death_on_popd, w = 3, cor) #WARNING: this may crash if your libraries are not up-to-date!
 
 tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(correlation, raster.downsample=FALSE) +
-  tm_raster(alpha=0.7, palette="Spectral", title="") + 
+  tm_raster(alpha=0.7, palette='Spectral', title='') + 
   tm_shape(borders$geometry) + tm_borders(alpha=0.5) + 
-  tm_layout(legend.position=c("left", "top"),
+  tm_layout(legend.position=c('left', 'top'),
             frame=FALSE, 
             legend.bg.alpha=0.6,
             legend.outside=TRUE,
@@ -284,7 +284,7 @@ tm_shape(basemap) + tm_rgb(alpha=0.8) + tm_shape(correlation, raster.downsample=
 ```
 
 
-```{r predictedIntensityThroughRhohat, echo=FALSE, fig.cap='Nonparametric Estimate of Intensity as a Function of Pop. Dens.', out.height='80%'}
+```{r predictedIntensityThroughRhohat, echo=FALSE, fig.cap='Nonparametric Estimate of Intensity as a Function of Pop. Dens.', out.height='70%'}
 #first we gotta project the data. I'm choosing ED1950 Albers, as it covers the target area decently
 death_raster_proj = death_raster %>%
                     terra::project(projected_crs)
@@ -362,7 +362,8 @@ mortality   = c(0.8) #@TotaroSufferingParadiseBubonic2005
 
 params = crossing(d_smoothing, d_coeff, d_max_range, worst_case, mortality)
 iter=0
-susc_maps = list()
+best_so_far_D = 0
+dead_maps = list()
 final_dead = list()
 final_alive = list()
 final_susc = list()
@@ -411,6 +412,34 @@ for (trial in split(params, seq(nrow(params)))) {
     
     #we musn't forget to also adjust the susceptible population density
     susd[[curr_idx]] = popc2popd(susceptible[[curr_idx]])
+    
+    maps[[curr_idx]] = tm_shape(basemap) +
+                    tm_rgb(alpha=0.8) +
+                    tm_shape(dead[[curr_idx]], raster.downsample=F) +
+                    tm_raster(alpha=0.7, 
+                              breaks=c(0.0,
+                                       10.0,
+                                       20.0,
+                                       40.0,
+                                       80.0,
+                                       160.0,
+                                       320.0,
+                                       640.0,
+                                       1280.0,
+                                       2560.0,
+                                       5120.0,
+                                       10240.0), title="Deaths in Area") +
+                    tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
+                    tm_layout(legend.position=c('right', 'center'),
+                              frame=FALSE,
+                              title.snap.to.legend = T,
+                              legend.outside=TRUE,
+                              legend.outside.position='left',
+                              main.title.size = 2.4,
+                              legend.text.size = 2.4,
+                              legend.title.size = 2.4,
+                              main.title.position='center',
+                              main.title=paste0(year,'AD Death Prediction'))
   }
   final_dead[[iter]] = terra::app(rast(dead), sum)
   final_susc[[iter]] = susceptible[[curr_idx]] #each element of S is a cum. tot., unlike D
@@ -425,6 +454,10 @@ for (trial in split(params, seq(nrow(params)))) {
                            terra::values(final_susc[[iter]]), 
                            use="complete.obs")
   
+  if (correlations_D[[iter]] > best_so_far_D) {
+    dead_maps = rep(maps, 1) #get copied lawl
+  }
+  
   print(paste('trial',iter,'complete'))
 }
 ```
@@ -432,7 +465,7 @@ for (trial in split(params, seq(nrow(params)))) {
 
 ## Deterministic Model Results
 
-  Despite its relative simplicity, the deterministic models perform extremely well on this data. With a very strong correlation coefficient between the submodel-estimated population and that estimated by the HYDE, we can be fairly confident that at least against the HYDE 3.2 data, predictions are fairly accurate. The death submodel estimation, while slightly less correlated with the HYDE prediction, is still decently accurate. However, the system's overreliance on self-verification using those estimates is also a significant weakness of the system; in the future, it would be prudent to test against other estimates of population and population decline, even simply testing the population of cities against what is reported by other historical sources. Any inaccuracy in the initial population or density, for example, could lead to sweeping inaccuracies in the predicted results.
+  Despite its relative simplicity, the deterministic models perform extremely well on this data. With a very strong correlation coefficient between the submodel-estimated population and that estimated by the HYDE, we can be confident that at least against the HYDE 3.2 data, predictions are fairly accurate. The death submodel estimation, while slightly less correlated with the HYDE prediction, is still decently accurate. However, the system's overreliance on self-verification using those estimates is also a significant weakness of the system; in the future, it would be prudent to test against other estimates of population and population decline, even simply testing the population of cities against what is reported by other historical sources. Any inaccuracy in the initial population or density, for example, could lead to sweeping inaccuracies in the predicted results.
   
   It is interesting that the preferred set of hyperparameters differs between the population count and deaths. This may also be the result of a dearth of adequate parameters in the system. Because deaths and surviving population are two sides of the same coin, linked mathematically through the system of equations $A = R + S, R = I - D, D = mortality \times I$, it seems fairly intuitive that adding at the very least a hyperparameter for $mortality$ instead of having it as a constant value would likely help to remedy this issue. Furthermore, some plague models [@Dean.etalHumanEctoparasitesSpread2018; @Sichone.etalEstimatingBasicReproduction2020; @Nguyen.etal2017PlagueOutbreak2018] add differing mortality and infection rates for various forms of the disease, as well as the capability to transition between these states. Factoring that information in would certainly would be a key step towards more accurate and realistic modelling. Unfortunately, doing so would preclude the continued usage of grid search to tune the parameters, as it would necessitate the addition of a huge swathe of new hyperparameters, likely skyrocketing the required computational time for this method far, far into the realm of infeasability.
   
@@ -468,6 +501,7 @@ a_coll = list(tm_shape(basemap) +
                      12000.0,
                      24000.0,
                      48000.0), title="People in cell") +
+  tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
   tm_layout(legend.position=c('right', 'center'),
             frame=FALSE,
             title.snap.to.legend = T,
@@ -494,6 +528,7 @@ a_coll = list(tm_shape(basemap) +
                        12000.0,
                        24000.0,
                        48000.0), title='People in cell') +
+    tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
     tm_layout(legend.position=c('right', 'center'),
               frame=FALSE,
               main.title.position='center',
@@ -535,6 +570,7 @@ d_coll = list(tm_shape(basemap) +
                                  12000.0,
                                  24000.0,
                                  48000.0), title="Deaths in cell", midpoint=0) +
+              tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
               tm_layout(legend.position=c('right', 'center'),
                         frame=FALSE,
                         legend.outside=TRUE,
@@ -562,6 +598,7 @@ d_coll = list(tm_shape(basemap) +
                                    48000.0), title="Deaths in cell",
                                               legend.is.portrait = T,
                                               midpoint=0) +
+                tm_shape(borders$geometry) + tm_borders(alpha=0.5) +
                 tm_layout(legend.position=c('right', 'center'),
                           frame=FALSE,
                           main.title.position='center',
@@ -578,7 +615,35 @@ tmap_arrange(d_coll[[1]], d_coll[[2]], ncol=1)
 
 # Summary for Non-Technical Audiences
 
+## Motivation
 
+  The "Black Death" refers to the period in history between 1347 and 1352, where a devastating disease epidemic completely decimated the population of Western Europe. This event had a tremendous impact upon not just Europe, but the whole world. Recently, new and very high-quality data has been released that strives to portray demographic data like population far more accurately for than ever before. By using this new data in combination with knowledge of when and where outbreaks of plague were, we can try to predict how severely the epidemic impacted any location in Western Europe. This isn't just a thought exercise, either: by learning more about how the average person would have experienced this time in history, we can more easily understand the huge societal changes it brought about, and how something like this might affect us.
+  
+## Data Sources
+
+  This new high-quality data is called the "HistorY Database for the global Environment", or HYDE for short @kleingoldewijkAnthropogenicLandUse2017. It was created by a team of scientists who are studying how the Earth and its climate have changed over time, and how people might be affecting that change. This new data has population counts and population density for all over Europe from just before the Black Death, as well as just after it. Another team of researchers has recently done a lot of work to compile historical references to plague outbreaks, and painstakingly put each one on a map for other researchers to use @schmidClimatedrivenIntroductionBlack2015.
+  
+## Methods
+
+  Because we know how many people were living at any location in Europe, and we know how densely they were packed in, we can try to guess how many people would get sick if an outbreak of plague were to appear in that area. Since we also actually do know when and where outbreaks of plague *did* occur, we can simulate every year, guessing how many people who are sick, have died, or have recovered. Once we've reached the end of the Black Death period, we can go back and check how close our simulated years are to the real thing by looking at how the results of our simulations line up with the what the new high-quality data says things were like then. If it looks close, we must not be too far off the mark.
+  
+## Results
+
+  The worst years of the plague were certainly pretty bad, according to the best predictions of our simulations. You can have a look for yourself in Figure \@ref(fig:keyYearDeaths). It seems like many people, especially those who lived in dense areas like cities didn't survive these years. In demographics, this is called a "population shock", and it usually results in huge societal changes.
+  
+## Limitations
+  
+  Just because we worked so hard to make our simulation doesn't mean that it's perfect: it relies very heavily on just a few sources, which can be dangerous. If anything is wrong in any of our sources, we will be wrong too. Also, our simulation aims to model the real world, but it does so using simple mathematics. The real world is very complicated, and things happen as a result of tons of interactions between many different variables. So, there are probably important things that our simulation doesn't take into account that might cause it to be inaccurate.
+  
+```{r keyYearDeaths, echo=FALSE, fig.cap='Yearly Deaths During the Worst Years of the Black Death', fig.height = 20, fig.width = 20}
+#lawl
+s_coll = list(dead_maps[[year2idx(1348)]],
+              dead_maps[[year2idx(1349)]],
+              dead_maps[[year2idx(1350)]],
+              dead_maps[[year2idx(1351)]])
+
+tmap_arrange(s_coll[[1]], s_coll[[2]], s_coll[[3]], s_coll[[4]], ncol=2, nrow=2)
+```
 
 
 # References
