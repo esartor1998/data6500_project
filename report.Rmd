@@ -17,8 +17,6 @@ link-citations: true
 
 ## Description of the Plague
 
-NOTES: please change the simulation back to normal when done. also return the DOWNLOAD FILES TO NORMAL
-
   The Second Pandemic, otherwise known as the Black Death, played a key role in the shaping of late Medieval Europe and the world as we know it today. A devastating disease, known in historical sources simply as "plague" or "plagas", killed 40% of Europe's population just between 1347 and 1352 @Jedwab.etalPandemicsPlacesPopulations2019, and which continued to afflict Europe in waves until the 19th century. The bacterium responsible for the disease, *Yersinia pestis*, can cause 3 forms of plague in humans, all of which present at first with common flu symptoms. Bubonic plague, the most common outcome of infection @EvansPneumonicPlagueIncidence2022, with the most spectacular presentation of this form being painful, blackened, and swollen lymph nodes known as buboes. While mortality resulting from the bubonic form is only moderate, untreated bubonic plague may also develop into one of the other two forms of the disease @WorldHealthOrganizationPlague. Pneumonic plague, the second most common form of the disease, occurs when the lungs become infected; symptoms commonly include chest pain, shortness of breath, and the coughing of blood. This form is nearly 100% fatal, becoming untreatable even to modern medicine within 24-36h of the onset of symptoms. While other forms of the disease have an incubation period of 2-8 days, onset of symptoms for the pneumonic form can be within as little as 24 hours of infection @A.D.A.M.Inc.Plague, with death following shortly thereafter @Pechous.etalPneumonicPlagueDarker2016. The rarest form of plague, septicemic, results when *Yersinia pestis* multiplies in the blood. Uniquely, this variant causes the necrosis of tissues, and internal organ failure. While in modern times it may be curable with antibiotics if caught early enough, in the Middle Ages, it shared pneumonic plague's certain mortality.
   
   The disease is spread most commonly through the bite of an infected rat flea, though it can also be spread in its pneumonic form from person-to-person @WorldHealthOrganizationPlague. Evidence also indicates that human fleas can also be a vector for the disease, and can both receive it from and transmit it to humans @Hufthammer.WalloeRatsCannotHave2013, with SIR modeling demonstrating that a model based on transmission through human ectoparasites is similar in fit to one based on transmission through rat fleas [@Dean.etalHumanEctoparasitesSpread2018; @Sichone.etalEstimatingBasicReproduction2020]
@@ -80,49 +78,49 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FAL
 basemap = read_osm(bbox, type='apple-iphoto', mergeTiles=TRUE)
 #should maybe project these too if i go back to that
 
-#download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw',
-#              './combined-maritime-traderoutes.csv')
+download.file('https://a.scrunko.monster/ZIwO3/HEhiticO76.csv/raw',
+              './combined-maritime-traderoutes.csv')
 maritime_routes_sf = read_sf('./combined-maritime-traderoutes.csv')
 st_crs(maritime_routes_sf) = unprojected_crs
 maritime_routes_sf = st_transform(maritime_routes_sf, unprojected_crs) %>%
                      st_crop(unproj_bbox)
 
-#download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/master/1279.zip', 
-#              './1279_borders.zip') #download directly from an archive, as streaming from my server
+download.file('https://github.com/kgjenkins/tq-world-historical-boundaries/raw/master/1279.zip', 
+              './1279_borders.zip') #download directly from an archive, as streaming from my server
                                     #crashes on windows (i think some sort of php bug on the serv.)
                                     #note: make sure to cite this archive in the bibliography!! 
-#unzip('./1279_borders.zip')
+unzip('./1279_borders.zip')
 borders = read_sf('./cntry1279.shp')
 st_crs(borders) = unprojected_crs
 borders = st_transform(borders, unprojected_crs) %>%
           st_crop(unproj_bbox)
 
-#download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw',
-#              './popc_1300AD.asc')
+download.file('https://a.scrunko.monster/ZIwO3/Lanidubi78.asc/raw',
+              './popc_1300AD.asc')
 ad1300_popc_rast = rast('./popc_1300AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox) #%>%
 
 units(ad1300_popc_rast) = 'ppl/cell'
 
-#download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw',
-#              './popd_1300AD.asc')
+download.file('https://a.scrunko.monster/ZIwO3/mIMuROme20.asc/raw',
+              './popd_1300AD.asc')
 ad1300_popd_rast = rast('./popd_1300AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox)
 
 units(ad1300_popd_rast) = 'ppl/km²'
 
-#download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw',
-#              './popc_1400AD.asc')
+download.file('https://a.scrunko.monster/ZIwO3/CAYoYISe01.asc/raw',
+              './popc_1400AD.asc')
 ad1400_popc_rast = rast('./popc_1400AD.asc') %>%
                    terra::project(unprojected_crs) %>%
                    crop(up_cbbox)
 
 units(ad1400_popc_rast) = 'ppl/cell'
 
-#download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw',
-#              './plague-db-europe.txt')
+download.file('https://a.scrunko.monster/ZIwO3/RiBOJiMa99.txt/raw',
+              './plague-db-europe.txt')
 
 death_raster = ad1400_popc_rast - ad1300_popc_rast
 ```
@@ -348,19 +346,19 @@ target_years = all_target_years[which(all_target_years$year > 1345 &
 recorded_years = unique(target_years$year)
 first_year = recorded_years[1]
 
-d_smoothing = c(0.2)#, 0.6, 0.8) #size of the region extremely close to 1.0 in distance raster
+d_smoothing = c(0.3, 0.7) #size of the region extremely close to 1.0 in distance raster
 
-d_coeff =     c(2)#, 50) #adjusts the overall region above d_threshold in distance raster
+d_coeff =     c(2, 50) #adjusts the overall region above d_threshold in distance raster
 
-d_max_range = c(3)#, 6, 12)
+d_max_range = c(3, 6, 12)
 
-worst_case =  c(0.75)#, 0.9) #estimated maximum yearly saturation % of infection among S
+worst_case =  c(0.75, 0.9) #estimated maximum yearly saturation % of infection among S
 
 #non-tuned params:
 d_threshold = 0.01 #value at which we would like to round to 0, to prevent global infection
-mortality   = c(0.8) #@TotaroSufferingParadiseBubonic2005
+mortality   = 0.8 #@TotaroSufferingParadiseBubonic2005
 
-params = crossing(d_smoothing, d_coeff, d_max_range, worst_case, mortality)
+params = crossing(d_smoothing, d_coeff, d_max_range, worst_case)
 iter=0
 best_so_far_D = 0
 dead_maps = list()
@@ -637,10 +635,10 @@ tmap_arrange(d_coll[[1]], d_coll[[2]], ncol=1)
   
 ```{r keyYearDeaths, echo=FALSE, fig.cap='Yearly Deaths During the Worst Years of the Black Death', fig.height = 20, fig.width = 20}
 #lawl
-s_coll = list(dead_maps[[year2idx(1348)]],
+s_coll = list(dead_maps[[year2idx(1347)]],
+              dead_maps[[year2idx(1348)]],
               dead_maps[[year2idx(1349)]],
-              dead_maps[[year2idx(1350)]],
-              dead_maps[[year2idx(1351)]])
+              dead_maps[[year2idx(1350)]])
 
 tmap_arrange(s_coll[[1]], s_coll[[2]], s_coll[[3]], s_coll[[4]], ncol=2, nrow=2)
 ```
